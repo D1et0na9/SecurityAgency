@@ -30,6 +30,9 @@ namespace SecurityAgencysApp
 
             // Загружаем охраняемые объекты с приклеенной информацией о клиенте и вызовах (в один грид — dataGridView3)
             await LoadGuardedObjectsCombinedAsync();
+
+            // Загружаем вызовы с приклеенной информацией по заказам/услугам (в один грид — dataGridView4)
+            await LoadGuardCallsCombinedAsync();
         }
 
         /// <summary>
@@ -469,6 +472,246 @@ namespace SecurityAgencysApp
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Ошибка при загрузке охраняемых объектов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает GUARDCALLS и "приклеивает" к каждому:
+        /// - итоговую стоимость по заказу (из GET_ORDER_DETAILS / GET_ORDERS)
+        /// - дату заказа (из GET_ORDERS)
+        /// - названия услуг (агрегация из GET_ORDER_DETAILS)
+        /// Всё отображается в одном DataGridView — dataGridView4. ID не показывается.
+        /// Грид — только для чтения.
+        /// </summary>
+        private async Task LoadGuardCallsCombinedAsync()
+        {
+            try
+            {
+                dataGridView4.ReadOnly = true;
+                dataGridView4.AllowUserToAddRows = false;
+                dataGridView4.AllowUserToDeleteRows = false;
+                dataGridView4.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                dataGridView4.MultiSelect = false;
+                dataGridView4.AutoGenerateColumns = true;
+                dataGridView4.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                dataGridView4.Visible = true;
+
+                var table = new DataTable();
+
+                // Основные поля вызова
+                table.Columns.Add("CALL_ID", typeof(int)); // внутренний, скрываем
+                table.Columns.Add("OBJECT_ADDRESS", typeof(string)).Caption = "Адрес объекта";
+                table.Columns.Add("EMPLOYEE_FIO", typeof(string)).Caption = "Сотрудник";
+                table.Columns.Add("CALL_DATETIME", typeof(DateTime)).Caption = "Дата/время вызова";
+                table.Columns.Add("RESULT", typeof(string)).Caption = "Результат";
+
+                // Поля из связанных таблиц/деталей заказа
+                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа"; // скрываем
+                table.Columns.Add("ORDER_DATE", typeof(DateTime)).Caption = "Дата оказания";
+                table.Columns.Add("ORDER_TOTAL", typeof(decimal)).Caption = "Итоговая сумма";
+                table.Columns.Add("SERVICE_NAMES", typeof(string)).Caption = "Услуги";
+
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+
+                // 1) Получим mapping OBJECT_ADDRESS -> ORDER_ID (через GET_GUARDEDOBJECTS)
+                var addrToOrder = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "GET_GUARDEDOBJECTS";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var rdr = await cmd.ExecuteReaderAsync();
+                    while (await rdr.ReadAsync())
+                    {
+                        if (ColumnExists(rdr, "OBJECT_ADDRESS") && !rdr.IsDBNull(rdr.GetOrdinal("OBJECT_ADDRESS"))
+                            && ColumnExists(rdr, "ORDER_ID") && !rdr.IsDBNull(rdr.GetOrdinal("ORDER_ID")))
+                        {
+                            var addr = rdr.GetString(rdr.GetOrdinal("OBJECT_ADDRESS"));
+                            var orderId = rdr.GetInt32(rdr.GetOrdinal("ORDER_ID"));
+                            addrToOrder[addr] = orderId;
+                        }
+                    }
+                }
+
+                // 2) Получим информацию по ORDERS: ORDER_ID -> (ORDER_DATE, TOTAL_REVENUE)
+                var orderInfo = new Dictionary<int, (DateTime? orderDate, decimal total)>();
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "GET_ORDERS";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var rdr = await cmd.ExecuteReaderAsync();
+                    while (await rdr.ReadAsync())
+                    {
+                        if (ColumnExists(rdr, "ID") && !rdr.IsDBNull(rdr.GetOrdinal("ID")))
+                        {
+                            var id = rdr.GetInt32(rdr.GetOrdinal("ID"));
+                            DateTime? orderDate = null;
+                            decimal total = 0;
+
+                            if (ColumnExists(rdr, "ORDER_DATE") && !rdr.IsDBNull(rdr.GetOrdinal("ORDER_DATE")))
+                                orderDate = rdr.GetDateTime(rdr.GetOrdinal("ORDER_DATE"));
+
+                            if (ColumnExists(rdr, "TOTAL_REVENUE") && !rdr.IsDBNull(rdr.GetOrdinal("TOTAL_REVENUE")))
+                                total = rdr.GetDecimal(rdr.GetOrdinal("TOTAL_REVENUE"));
+
+                            orderInfo[id] = (orderDate, total);
+                        }
+                    }
+                }
+
+                // 3) Получим детали заказов (GET_ORDER_DETAILS) и агрегируем названия услуг и итог по заказу
+                var servicesByOrder = new Dictionary<int, List<string>>();
+                var totalByOrder = new Dictionary<int, decimal>(); // если нужно, можно пересчитать
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "GET_ORDER_DETAILS";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var rdr = await cmd.ExecuteReaderAsync();
+                    while (await rdr.ReadAsync())
+                    {
+                        if (ColumnExists(rdr, "ORDER_ID") && !rdr.IsDBNull(rdr.GetOrdinal("ORDER_ID")))
+                        {
+                            var orderId = rdr.GetInt32(rdr.GetOrdinal("ORDER_ID"));
+
+                            string servName = string.Empty;
+                            if (ColumnExists(rdr, "SERVICENAME") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICENAME")))
+                                servName = rdr.GetString(rdr.GetOrdinal("SERVICENAME"));
+
+                            decimal lineTotal = 0;
+                            if (ColumnExists(rdr, "TOTAL_LINE") && !rdr.IsDBNull(rdr.GetOrdinal("TOTAL_LINE")))
+                                lineTotal = rdr.GetDecimal(rdr.GetOrdinal("TOTAL_LINE"));
+                            else if (ColumnExists(rdr, "SERVICE_AMOUNT") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICE_AMOUNT"))
+                                     && ColumnExists(rdr, "QUANTITY") && !rdr.IsDBNull(rdr.GetOrdinal("QUANTITY")))
+                                lineTotal = rdr.GetDecimal(rdr.GetOrdinal("SERVICE_AMOUNT")) * rdr.GetInt32(rdr.GetOrdinal("QUANTITY"));
+
+                            if (!servicesByOrder.TryGetValue(orderId, out var list))
+                            {
+                                list = new List<string>();
+                                servicesByOrder[orderId] = list;
+                            }
+
+                            if (!string.IsNullOrEmpty(servName) && !list.Contains(servName))
+                                list.Add(servName);
+
+                            if (totalByOrder.ContainsKey(orderId))
+                                totalByOrder[orderId] += lineTotal;
+                            else
+                                totalByOrder[orderId] = lineTotal;
+                        }
+                    }
+                }
+
+                // 4) Получаем вызовы (GET_GUARDCALLS) и собираем итоговую строку
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "GET_GUARDCALLS";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var rdr = await cmd.ExecuteReaderAsync();
+                    while (await rdr.ReadAsync())
+                    {
+                        var row = table.NewRow();
+
+                        if (ColumnExists(rdr, "ID") && !rdr.IsDBNull(rdr.GetOrdinal("ID")))
+                            row["CALL_ID"] = rdr.GetInt32(rdr.GetOrdinal("ID"));
+
+                        string? addr = null;
+                        if (ColumnExists(rdr, "OBJECT_ADDRESS") && !rdr.IsDBNull(rdr.GetOrdinal("OBJECT_ADDRESS")))
+                        {
+                            addr = rdr.GetString(rdr.GetOrdinal("OBJECT_ADDRESS"));
+                            row["OBJECT_ADDRESS"] = addr;
+                        }
+
+                        if (ColumnExists(rdr, "EMPLOYEE_FIO") && !rdr.IsDBNull(rdr.GetOrdinal("EMPLOYEE_FIO")))
+                            row["EMPLOYEE_FIO"] = rdr.GetString(rdr.GetOrdinal("EMPLOYEE_FIO"));
+
+                        if (ColumnExists(rdr, "CALL_DATETIME") && !rdr.IsDBNull(rdr.GetOrdinal("CALL_DATETIME")))
+                            row["CALL_DATETIME"] = rdr.GetDateTime(rdr.GetOrdinal("CALL_DATETIME"));
+
+                        if (ColumnExists(rdr, "RESULT") && !rdr.IsDBNull(rdr.GetOrdinal("RESULT")))
+                            row["RESULT"] = rdr.GetString(rdr.GetOrdinal("RESULT"));
+
+                        // По адресу ищем ORDER_ID -> затем доп.инфу
+                        if (!string.IsNullOrEmpty(addr) && addrToOrder.TryGetValue(addr, out var orderId))
+                        {
+                            row["ORDER_ID"] = orderId;
+
+                            if (orderInfo.TryGetValue(orderId, out var info))
+                            {
+                                if (info.orderDate.HasValue)
+                                    row["ORDER_DATE"] = info.orderDate.Value;
+                                row["ORDER_TOTAL"] = info.total;
+                            }
+
+                            // Если в GET_ORDER_DETAILS собрали totalByOrder — используем его как более точный итог
+                            if (totalByOrder.TryGetValue(orderId, out var recalculated))
+                                row["ORDER_TOTAL"] = recalculated;
+
+                            if (servicesByOrder.TryGetValue(orderId, out var servs) && servs.Count > 0)
+                            {
+                                row["SERVICE_NAMES"] = string.Join(", ", servs);
+                            }
+                            else
+                            {
+                                row["SERVICE_NAMES"] = string.Empty;
+                            }
+                        }
+                        else
+                        {
+                            row["ORDER_ID"] = DBNull.Value;
+                            row["ORDER_DATE"] = DBNull.Value;
+                            row["ORDER_TOTAL"] = 0m;
+                            row["SERVICE_NAMES"] = string.Empty;
+                        }
+
+                        table.Rows.Add(row);
+                    }
+                }
+
+                // Привязка к гриду
+                dataGridView4.DataSource = table;
+
+                // Настройка отображения и скрытие ID-полей
+                foreach (DataGridViewColumn col in dataGridView4.Columns)
+                {
+                    if (table.Columns.Contains(col.Name) && !string.IsNullOrEmpty(table.Columns[col.Name].Caption))
+                        col.HeaderText = table.Columns[col.Name].Caption;
+
+                    if (string.Equals(col.Name, "CALL_ID", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(col.Name, "ORDER_ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        col.Visible = false;
+                    }
+                }
+
+                // Форматирование колонок
+                if (dataGridView4.Columns.Contains("CALL_DATETIME"))
+                    dataGridView4.Columns["CALL_DATETIME"].DefaultCellStyle.Format = "g";
+
+                if (dataGridView4.Columns.Contains("ORDER_DATE"))
+                    dataGridView4.Columns["ORDER_DATE"].DefaultCellStyle.Format = "d";
+
+                if (dataGridView4.Columns.Contains("ORDER_TOTAL"))
+                {
+                    dataGridView4.Columns["ORDER_TOTAL"].DefaultCellStyle.Format = "N2";
+                    dataGridView4.Columns["ORDER_TOTAL"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                    dataGridView4.Columns["ORDER_TOTAL"].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+                }
+
+                if (dataGridView4.Columns.Contains("SERVICE_NAMES"))
+                {
+                    dataGridView4.Columns["SERVICE_NAMES"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке вызовов (БД): {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке вызовов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
