@@ -60,9 +60,9 @@ namespace SecurityAgencysApp
             // 
             // btnLogin
             // 
-            this.btnLogin.Location = new System.Drawing.Point(85, 86);
+            this.btnLogin.Location = new System.Drawing.Point(65, 86);
             this.btnLogin.Name = "btnLogin";
-            this.btnLogin.Size = new System.Drawing.Size(110, 27);
+            this.btnLogin.Size = new System.Drawing.Size(130, 27);
             this.btnLogin.TabIndex = 2;
             this.btnLogin.Text = "Авторизоваться";
             this.btnLogin.UseVisualStyleBackColor = true;
