@@ -183,6 +183,7 @@
             dataGridView6.RowHeadersWidth = 51;
             dataGridView6.Size = new Size(620, 360);
             dataGridView6.TabIndex = 1;
+            dataGridView6.CellContentClick += dataGridView6_CellContentClick;
             // 
             // panel13
             // 
@@ -210,6 +211,7 @@
             dataGridView5.RowHeadersWidth = 51;
             dataGridView5.Size = new Size(615, 360);
             dataGridView5.TabIndex = 0;
+            dataGridView5.CellContentClick += dataGridView5_CellContentClick;
             // 
             // panel12
             // 
@@ -236,6 +238,7 @@
             button3.TabIndex = 3;
             button3.Text = "Сохранить в CSV";
             button3.UseVisualStyleBackColor = true;
+            button3.Click += button3_Click;
             // 
             // panel3
             // 
@@ -305,6 +308,7 @@
             dateTimePicker2.Name = "dateTimePicker2";
             dateTimePicker2.Size = new Size(395, 27);
             dateTimePicker2.TabIndex = 4;
+            dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged;
             // 
             // dateTimePicker1
             // 
@@ -312,6 +316,7 @@
             dateTimePicker1.Name = "dateTimePicker1";
             dateTimePicker1.Size = new Size(395, 27);
             dateTimePicker1.TabIndex = 3;
+            dateTimePicker1.ValueChanged += dateTimePicker1_ValueChanged;
             // 
             // comboBox2
             // 
@@ -320,6 +325,7 @@
             comboBox2.Name = "comboBox2";
             comboBox2.Size = new Size(395, 28);
             comboBox2.TabIndex = 1;
+            comboBox2.SelectedIndexChanged += comboBox2_SelectedIndexChanged;
             // 
             // comboBox1
             // 
@@ -328,6 +334,7 @@
             comboBox1.Name = "comboBox1";
             comboBox1.Size = new Size(395, 28);
             comboBox1.TabIndex = 0;
+            comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
             // 
             // tabPage4
             // 
@@ -397,6 +404,7 @@
             pictureBox2.Size = new Size(159, 229);
             pictureBox2.TabIndex = 0;
             pictureBox2.TabStop = false;
+            pictureBox2.Click += pictureBox2_Click;
             // 
             // checkBox4
             // 
@@ -407,6 +415,7 @@
             checkBox4.TabIndex = 6;
             checkBox4.Text = "Экспорт изменённого";
             checkBox4.UseVisualStyleBackColor = true;
+            checkBox4.CheckedChanged += checkBox4_CheckedChanged;
             // 
             // button13
             // 
@@ -416,6 +425,7 @@
             button13.TabIndex = 5;
             button13.Text = "Сортировать";
             button13.UseVisualStyleBackColor = true;
+            button13.Click += button13_Click;
             // 
             // button12
             // 
@@ -425,6 +435,7 @@
             button12.TabIndex = 4;
             button12.Text = "Обновить";
             button12.UseVisualStyleBackColor = true;
+            button12.Click += button12_Click;
             // 
             // button11
             // 
@@ -434,6 +445,7 @@
             button11.TabIndex = 3;
             button11.Text = "Сохранить в CSV";
             button11.UseVisualStyleBackColor = true;
+            button11.Click += button11_Click;
             // 
             // textBox4
             // 
@@ -441,6 +453,7 @@
             textBox4.Name = "textBox4";
             textBox4.Size = new Size(897, 27);
             textBox4.TabIndex = 2;
+            textBox4.TextChanged += textBox4_TextChanged;
             // 
             // label4
             // 
@@ -460,6 +473,7 @@
             dataGridView4.RowHeadersWidth = 51;
             dataGridView4.Size = new Size(897, 525);
             dataGridView4.TabIndex = 0;
+            dataGridView4.CellContentClick += dataGridView4_CellContentClick;
             // 
             // tabPage3
             // 
@@ -522,6 +536,7 @@
             checkBox3.TabIndex = 6;
             checkBox3.Text = "Экспорт изменённого";
             checkBox3.UseVisualStyleBackColor = true;
+            checkBox3.CheckedChanged += checkBox3_CheckedChanged;
             // 
             // button10
             // 
@@ -531,6 +546,7 @@
             button10.TabIndex = 5;
             button10.Text = "Сортировать";
             button10.UseVisualStyleBackColor = true;
+            button10.Click += button10_Click;
             // 
             // button9
             // 
@@ -540,6 +556,7 @@
             button9.TabIndex = 4;
             button9.Text = "Обновить";
             button9.UseVisualStyleBackColor = true;
+            button9.Click += button9_Click;
             // 
             // button8
             // 
@@ -549,6 +566,7 @@
             button8.TabIndex = 3;
             button8.Text = "Сохранить в CSV";
             button8.UseVisualStyleBackColor = true;
+            button8.Click += button8_Click;
             // 
             // textBox3
             // 
@@ -556,6 +574,7 @@
             textBox3.Name = "textBox3";
             textBox3.Size = new Size(943, 27);
             textBox3.TabIndex = 2;
+            textBox3.TextChanged += textBox3_TextChanged;
             // 
             // label3
             // 
@@ -575,6 +594,7 @@
             dataGridView3.RowHeadersWidth = 51;
             dataGridView3.Size = new Size(943, 525);
             dataGridView3.TabIndex = 0;
+            dataGridView3.CellContentClick += dataGridView3_CellContentClick;
             // 
             // tabPage2
             // 
@@ -637,6 +657,7 @@
             checkBox2.TabIndex = 6;
             checkBox2.Text = "Экспорт изменённого";
             checkBox2.UseVisualStyleBackColor = true;
+            checkBox2.CheckedChanged += checkBox2_CheckedChanged;
             // 
             // button7
             // 
@@ -646,6 +667,7 @@
             button7.TabIndex = 5;
             button7.Text = "Сортировать";
             button7.UseVisualStyleBackColor = true;
+            button7.Click += button7_Click;
             // 
             // button6
             // 
@@ -655,6 +677,7 @@
             button6.TabIndex = 4;
             button6.Text = "Обновить";
             button6.UseVisualStyleBackColor = true;
+            button6.Click += button6_Click;
             // 
             // button4
             // 
@@ -664,6 +687,7 @@
             button4.TabIndex = 3;
             button4.Text = "Сохранить в CSV";
             button4.UseVisualStyleBackColor = true;
+            button4.Click += button4_Click;
             // 
             // textBox2
             // 
@@ -671,6 +695,7 @@
             textBox2.Name = "textBox2";
             textBox2.Size = new Size(909, 27);
             textBox2.TabIndex = 2;
+            textBox2.TextChanged += textBox2_TextChanged;
             // 
             // label2
             // 
@@ -690,6 +715,7 @@
             dataGridView2.RowHeadersWidth = 51;
             dataGridView2.Size = new Size(909, 525);
             dataGridView2.TabIndex = 0;
+            dataGridView2.CellContentClick += dataGridView2_CellContentClick;
             // 
             // tabPage1
             // 
@@ -759,6 +785,7 @@
             pictureBox1.Size = new Size(249, 249);
             pictureBox1.TabIndex = 0;
             pictureBox1.TabStop = false;
+            pictureBox1.Click += pictureBox1_Click;
             // 
             // checkBox1
             // 
@@ -769,6 +796,7 @@
             checkBox1.TabIndex = 6;
             checkBox1.Text = "Экспорт изменённого";
             checkBox1.UseVisualStyleBackColor = true;
+            checkBox1.CheckedChanged += checkBox1_CheckedChanged;
             // 
             // button5
             // 
@@ -778,6 +806,7 @@
             button5.TabIndex = 5;
             button5.Text = "Сортировать";
             button5.UseVisualStyleBackColor = true;
+            button5.Click += button5_Click;
             // 
             // button2
             // 
@@ -787,6 +816,7 @@
             button2.TabIndex = 4;
             button2.Text = "Обновить";
             button2.UseVisualStyleBackColor = true;
+            button2.Click += button2_Click;
             // 
             // label1
             // 
@@ -803,6 +833,7 @@
             textBox1.Name = "textBox1";
             textBox1.Size = new Size(718, 27);
             textBox1.TabIndex = 2;
+            textBox1.TextChanged += textBox1_TextChanged;
             // 
             // button1
             // 
@@ -812,6 +843,7 @@
             button1.TabIndex = 1;
             button1.Text = "Сохранить в CSV";
             button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
             // 
             // dataGridView1
             // 
@@ -822,6 +854,7 @@
             dataGridView1.RowHeadersWidth = 51;
             dataGridView1.Size = new Size(718, 525);
             dataGridView1.TabIndex = 0;
+            dataGridView1.CellContentClick += dataGridView1_CellContentClick;
             // 
             // tabControl1
             // 
@@ -845,6 +878,7 @@
             button14.TabIndex = 0;
             button14.Text = "Добавить вызов";
             button14.UseVisualStyleBackColor = true;
+            button14.Click += button14_Click;
             // 
             // button15
             // 
@@ -854,6 +888,7 @@
             button15.TabIndex = 1;
             button15.Text = "Редактировать вызовы";
             button15.UseVisualStyleBackColor = true;
+            button15.Click += button15_Click;
             // 
             // button16
             // 
@@ -863,6 +898,7 @@
             button16.TabIndex = 2;
             button16.Text = "Удалить вызовы";
             button16.UseVisualStyleBackColor = true;
+            button16.Click += button16_Click;
             // 
             // button17
             // 
@@ -872,6 +908,7 @@
             button17.TabIndex = 0;
             button17.Text = "Добавить объекты";
             button17.UseVisualStyleBackColor = true;
+            button17.Click += button17_Click;
             // 
             // button18
             // 
@@ -881,6 +918,7 @@
             button18.TabIndex = 1;
             button18.Text = "Редактировать объекты";
             button18.UseVisualStyleBackColor = true;
+            button18.Click += button18_Click;
             // 
             // button19
             // 
@@ -890,6 +928,7 @@
             button19.TabIndex = 2;
             button19.Text = "Удалить объекты";
             button19.UseVisualStyleBackColor = true;
+            button19.Click += button19_Click;
             // 
             // button20
             // 
@@ -899,6 +938,7 @@
             button20.TabIndex = 0;
             button20.Text = "Добавить заказчика";
             button20.UseVisualStyleBackColor = true;
+            button20.Click += button20_Click;
             // 
             // button21
             // 
@@ -908,6 +948,7 @@
             button21.TabIndex = 1;
             button21.Text = "Редактировать заказчика";
             button21.UseVisualStyleBackColor = true;
+            button21.Click += button21_Click;
             // 
             // button22
             // 
@@ -917,6 +958,7 @@
             button22.TabIndex = 2;
             button22.Text = "Удалить заказчика";
             button22.UseVisualStyleBackColor = true;
+            button22.Click += button22_Click;
             // 
             // button23
             // 
@@ -926,6 +968,7 @@
             button23.TabIndex = 0;
             button23.Text = "Удалить сотрудника";
             button23.UseVisualStyleBackColor = true;
+            button23.Click += button23_Click;
             // 
             // button24
             // 
@@ -935,6 +978,7 @@
             button24.TabIndex = 1;
             button24.Text = "Редактировать сотрудника";
             button24.UseVisualStyleBackColor = true;
+            button24.Click += button24_Click;
             // 
             // button25
             // 
@@ -944,6 +988,7 @@
             button25.TabIndex = 2;
             button25.Text = "Добавить сотрудника";
             button25.UseVisualStyleBackColor = true;
+            button25.Click += button25_Click;
             // 
             // panel14
             // 
