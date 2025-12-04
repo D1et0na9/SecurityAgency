@@ -33,6 +33,9 @@ namespace SecurityAgencysApp
 
             // Загружаем вызовы с приклеенной информацией по заказам/услугам (в один грид — dataGridView4)
             await LoadGuardCallsCombinedAsync();
+
+            // Загружаем типы услуг (в грид — dataGridView7)
+            await LoadServiceTypesAsync();
         }
 
         /// <summary>
@@ -601,7 +604,7 @@ namespace SecurityAgencysApp
                                 totalByOrder[orderId] = lineTotal;
                         }
                     }
-                }
+                };
 
                 // 4) Получаем вызовы (GET_GUARDCALLS) и собираем итоговую строку
                 await using (var cmd = conn.CreateCommand())
@@ -712,6 +715,87 @@ namespace SecurityAgencysApp
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Ошибка при загрузке вызовов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает типы услуг в dataGridView7
+        /// </summary>
+        private async Task LoadServiceTypesAsync()
+        {
+            try
+            {
+                // Если элемент dataGridView7 ещё не добавлен в Designer — добавьте его.
+                // Настройки грида аналогичны другим методам в классе
+                dataGridView7.ReadOnly = true;
+                dataGridView7.AllowUserToAddRows = false;
+                dataGridView7.AllowUserToDeleteRows = false;
+                dataGridView7.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                dataGridView7.MultiSelect = false;
+                dataGridView7.AutoGenerateColumns = true;
+                dataGridView7.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                dataGridView7.Visible = true;
+
+                var table = new DataTable();
+
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+
+                // Попробуем сначала вызвать хранимую процедуру GET_SERVICETYPES (если она есть),
+                // иначе выполняем прямой SELECT из таблицы SERVICETYPES.
+                try
+                {
+                    cmd.CommandText = "GET_SERVICETYPES";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var rdrSp = await cmd.ExecuteReaderAsync();
+                    table.Load(rdrSp);
+                }
+                catch (FbException)
+                {
+                    // Если SP отсутствует или вызов не удался — используем SELECT
+                    cmd.Parameters.Clear();
+                    cmd.CommandText = "SELECT * FROM \"SERVICETYPES\"";
+                    cmd.CommandType = System.Data.CommandType.Text;
+
+                    await using var rdr = await cmd.ExecuteReaderAsync();
+                    table.Load(rdr);
+                }
+
+                // Уберём колонку ID из отображения, если она есть
+                if (table.Columns.Contains("ID"))
+                    table.Columns.Remove("ID");
+
+                // Привязка к гриду
+                dataGridView7.DataSource = table;
+
+                // Проставим читаемые заголовки (часто встречающиеся имена)
+                var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["SERVICENAME"] = "Название",
+                    ["UNIT_COST"] = "Стоимость",
+                };
+
+                foreach (DataGridViewColumn col in dataGridView7.Columns)
+                {
+                    if (hdr.TryGetValue(col.Name, out var caption))
+                        col.HeaderText = caption;
+                    else
+                    {
+                        // Падение: заменим подчеркивания пробелами и приведём к "человеческому" виду
+                        var n = col.Name.Replace('_', ' ').Trim();
+                        if (!string.IsNullOrEmpty(n))
+                            col.HeaderText = char.ToUpperInvariant(n[0]) + (n.Length > 1 ? n.Substring(1).ToLowerInvariant() : string.Empty);
+                    }
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при загрузке типов услуг: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке типов услуг: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -954,5 +1038,11 @@ namespace SecurityAgencysApp
         {
 
         }
+
+        private void splitContainer5_Panel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
     }
 }
