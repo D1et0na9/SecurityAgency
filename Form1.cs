@@ -13,27 +13,6 @@ namespace SecurityAgencysApp
         private readonly Dictionary<string, UserControl> _views = new();
         private UserControl? _currentView;
 
-        // Controls for "Добавить сотрудника" в panel2
-        private TextBox? _txtEmpName;
-        private TextBox? _txtEmpSurname;
-        private TextBox? _txtEmpSecondName;
-        private DateTimePicker? _dtpEmpHire;
-        private NumericUpDown? _numEmpSalary;
-        private TextBox? _txtEmpEducation;
-        private ComboBox? _cmbEmpPositions;
-        private Button? _btnSaveEmployee;
-        private bool _addEmployeeControlsCreated;
-
-        // Controls for "Добавить клиента" в panel10
-        private TextBox? _txtClientName;
-        private TextBox? _txtClientSurname;
-        private TextBox? _txtClientSecondName;
-        private TextBox? _txtClientAddress;
-        private TextBox? _txtClientPhone;
-        private TextBox? _txtClientAccount;
-        private Button? _btnSaveClient;
-        private bool _addClientControlsCreated;
-
         public Form1()
         {
             InitializeComponent();
@@ -52,399 +31,8 @@ namespace SecurityAgencysApp
             // Загружаем охраняемые объекты с приклеенной информацией о клиенте и вызовах (в один грид — dataGridView3)
             await LoadGuardedObjectsCombinedAsync();
 
+            // Загружаем вызовы с приклеенной информацией по заказам/услугам (в один грид — dataGridView4)
             await LoadGuardCallsCombinedAsync();
-
-            // Подготовим позиции (чтобы выпадающее поле было быстрое при создании формы)
-            _ = LoadPositionsCacheAsync();
-        }
-
-        // Загружаем список позиций в кэш (не привязываем к конкретному контролу)
-        private List<(int Id, string Name)>? _positionsCache;
-        private async Task LoadPositionsCacheAsync()
-        {
-            try
-            {
-                var list = new List<(int, string)>();
-                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
-                await using var cmd = conn.CreateCommand();
-                cmd.CommandText = "GET_POSITIONS";
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    int id = ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")) ? reader.GetInt32(reader.GetOrdinal("ID")) : 0;
-                    string name = ColumnExists(reader, "NAME") && !reader.IsDBNull(reader.GetOrdinal("NAME")) ? reader.GetString(reader.GetOrdinal("NAME")) : string.Empty;
-                    list.Add((id, name));
-                }
-
-                _positionsCache = list;
-            }
-            catch
-            {
-                _positionsCache = new List<(int, string)>();
-            }
-        }
-
-        private async void button25_Click(object sender, EventArgs e)
-        {
-            // Показать форму добавления сотрудника в panel2
-            ShowAddEmployeeControls();
-            // загрузим позиции если ещё не загружены
-            if (_positionsCache == null)
-                await LoadPositionsCacheAsync();
-
-            // Заполним combo если он создан
-            if (_cmbEmpPositions != null && _positionsCache != null)
-            {
-                _cmbEmpPositions.DataSource = _positionsCache.Select(p => new { p.Id, p.Name }).ToList();
-                _cmbEmpPositions.DisplayMember = "Name";
-                _cmbEmpPositions.ValueMember = "Id";
-                _cmbEmpPositions.SelectedIndex = -1;
-            }
-        }
-
-        private void ShowAddEmployeeControls()
-        {
-            if (_addEmployeeControlsCreated)
-                return;
-
-            panel2.Controls.Clear();
-
-            var tl = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 9,
-                AutoSize = false,
-                Padding = new Padding(6),
-            };
-            tl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-            tl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-            // Labels + controls
-            tl.RowStyles.Clear();
-            for (int i = 0; i < 9; i++)
-                tl.RowStyles.Add(new RowStyle(SizeType.Absolute,  thirtyFive()));
-
-            // Имя
-            tl.Controls.Add(new Label { Text = "Имя:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
-            _txtEmpName = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtEmpName, 1, 0);
-
-            // Фамилия
-            tl.Controls.Add(new Label { Text = "Фамилия:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
-            _txtEmpSurname = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtEmpSurname, 1, 1);
-
-            // Отчество
-            tl.Controls.Add(new Label { Text = "Отчество:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
-            _txtEmpSecondName = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtEmpSecondName, 1, 2);
-
-            // Дата приёма
-            tl.Controls.Add(new Label { Text = "Дата приёма:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
-            _dtpEmpHire = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Short, Value = DateTime.Today };
-            tl.Controls.Add(_dtpEmpHire, 1, 3);
-
-            // Оклад
-            tl.Controls.Add(new Label { Text = "Оклад:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 4);
-            _numEmpSalary = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 100000000, Increment = 100 };
-            tl.Controls.Add(_numEmpSalary, 1, 4);
-
-            // Образование
-            tl.Controls.Add(new Label { Text = "Образование:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 5);
-            _txtEmpEducation = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtEmpEducation, 1, 5);
-
-            // Должность (Combo)
-            tl.Controls.Add(new Label { Text = "Должность:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 6);
-            _cmbEmpPositions = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            tl.Controls.Add(_cmbEmpPositions, 1, 6);
-
-            // Spacer
-            tl.Controls.Add(new Label { Text = "", AutoSize = true }, 0, 7);
-            tl.Controls.Add(new Label { Text = "", AutoSize = true }, 1, 7);
-
-            // Кнопка сохранить
-            _btnSaveEmployee = new Button { Text = "Сохранить", Dock = DockStyle.Right, Width = 120 };
-            _btnSaveEmployee.Click += async (s, e) => await BtnSaveEmployee_ClickAsync(s, e);
-            tl.Controls.Add(_btnSaveEmployee, 1, 8);
-
-            panel2.Controls.Add(tl);
-            panel2.BringToFront();
-            panel2.Refresh();
-            _addEmployeeControlsCreated = true;
-        }
-
-        // Вспомогательный метод для единообразной высоты строк
-        private static int thirtyFive() => 35;
-
-        private async Task BtnSaveEmployee_ClickAsync(object? sender, EventArgs e)
-        {
-            // Валидация минимальная
-            var name = _txtEmpName?.Text?.Trim() ?? string.Empty;
-            var surname = _txtEmpSurname?.Text?.Trim() ?? string.Empty;
-            var second = _txtEmpSecondName?.Text?.Trim() ?? string.Empty;
-            var education = _txtEmpEducation?.Text?.Trim() ?? string.Empty;
-            var hireDate = _dtpEmpHire?.Value.Date ?? DateTime.Today;
-            var salary = _numEmpSalary != null ? Convert.ToDecimal(_numEmpSalary.Value) : 0m;
-            var positionId = _cmbEmpPositions?.SelectedValue as int?;
-            if (positionId == null && _cmbEmpPositions != null && _cmbEmpPositions.SelectedItem != null)
-            {
-                // SelectedValue может быть анонимным типом (Id, Name) — попробуем достать через reflection-safe
-                try
-                {
-                    var sel = _cmbEmpPositions.SelectedItem;
-                    var idProp = sel.GetType().GetProperty("Id");
-                    if (idProp != null)
-                        positionId = (int?)idProp.GetValue(sel);
-                }
-                catch { positionId = null; }
-            }
-
-            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(surname) || positionId == null)
-            {
-                MessageBox.Show(this, "Пожалуйста, заполните обязательные поля: Имя, Фамилия, Должность.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var res = MessageBox.Show(this, "Вы уверены что хотите добавить пользователя?", "Подтвердите добавление", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (res != DialogResult.Yes)
-                return;
-
-            try
-            {
-                var createdId = await AddEmployeeToDatabaseAsync(name, surname, second, hireDate, salary, education, positionId.Value, null);
-                if (createdId.HasValue)
-                {
-                    MessageBox.Show(this, $"Сотрудник успешно добавлен (ID = {createdId.Value}).", "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Обновим список сотрудников
-                    await LoadEmployeesAsync();
-                    // Очистим панель ввода
-                    ClearAddEmployeeControls();
-                }
-                else
-                {
-                    MessageBox.Show(this, "Не удалось добавить сотрудника. Проверьте логи.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (FbException fbEx)
-            {
-                MessageBox.Show(this, $"Ошибка БД при добавлении сотрудника: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Ошибка при добавлении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void ClearAddEmployeeControls()
-        {
-            if (!_addEmployeeControlsCreated)
-                return;
-
-            // Сбросим и удалим созданные контролы
-            _txtEmpName = null;
-            _txtEmpSurname = null;
-            _txtEmpSecondName = null;
-            _dtpEmpHire = null;
-            _numEmpSalary = null;
-            _txtEmpEducation = null;
-            _cmbEmpPositions = null;
-            _btnSaveEmployee = null;
-
-            panel2.Controls.Clear();
-            _addEmployeeControlsCreated = false;
-        }
-
-        private async Task<int?> AddEmployeeToDatabaseAsync(string name, string surname, string secondName, DateTime hireDate, decimal salary, string education, int positionId, byte[]? photo)
-        {
-            await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "ADD_EMPLOYEE";
-            cmd.CommandType = System.Data.CommandType.StoredProcedure;
-
-            // Параметры процедуры ADD_EMPLOYEE
-            cmd.Parameters.AddWithValue("NAME", name);
-            cmd.Parameters.AddWithValue("SURNAME", surname);
-            cmd.Parameters.AddWithValue("SECOND_NAME", secondName);
-            cmd.Parameters.AddWithValue("HIRE_DATE", hireDate);
-            cmd.Parameters.AddWithValue("SALARY", salary);
-            cmd.Parameters.AddWithValue("EDUCATION", string.IsNullOrEmpty(education) ? (object)DBNull.Value : education);
-            cmd.Parameters.AddWithValue("POSITION_ID", positionId);
-            cmd.Parameters.AddWithValue("PHOTO", photo != null ? (object)photo : DBNull.Value);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                // Ожидаем возвращаемую колонку ID (имя колонки в SP — ID)
-                if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
-                    return reader.GetInt32(reader.GetOrdinal("ID"));
-            }
-
-            return null;
-        }
-
-        // --- НОВОЕ: реализация добавления клиента (button20 -> panel10) ---
-
-        private void button20_Click(object sender, EventArgs e)
-        {
-            ShowAddClientControls();
-        }
-
-        private void ShowAddClientControls()
-        {
-            if (_addClientControlsCreated)
-                return;
-
-            panel10.Controls.Clear();
-
-            var tl = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 8,
-                Padding = new Padding(6),
-            };
-            tl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-            tl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-            tl.RowStyles.Clear();
-            for (int i = 0; i < 8; i++)
-                tl.RowStyles.Add(new RowStyle(SizeType.Absolute, thirtyFive()));
-
-            // Имя
-            tl.Controls.Add(new Label { Text = "Имя:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
-            _txtClientName = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientName, 1, 0);
-
-            // Фамилия
-            tl.Controls.Add(new Label { Text = "Фамилия:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
-            _txtClientSurname = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientSurname, 1, 1);
-
-            // Отчество
-            tl.Controls.Add(new Label { Text = "Отчество:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
-            _txtClientSecondName = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientSecondName, 1, 2);
-
-            // Адрес
-            tl.Controls.Add(new Label { Text = "Адрес:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
-            _txtClientAddress = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientAddress, 1, 3);
-
-            // Телефон
-            tl.Controls.Add(new Label { Text = "Телефон:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 4);
-            _txtClientPhone = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientPhone, 1, 4);
-
-            // Лицевой счёт
-            tl.Controls.Add(new Label { Text = "Л/сч:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 5);
-            _txtClientAccount = new TextBox { Dock = DockStyle.Fill };
-            tl.Controls.Add(_txtClientAccount, 1, 5);
-
-            // Spacer
-            tl.Controls.Add(new Label { Text = "", AutoSize = true }, 0, 6);
-            tl.Controls.Add(new Label { Text = "", AutoSize = true }, 1, 6);
-
-            // Кнопка сохранить
-            _btnSaveClient = new Button { Text = "Сохранить", Dock = DockStyle.Right, Width = 120 };
-            _btnSaveClient.Click += async (s, e) => await BtnSaveClient_ClickAsync(s, e);
-            tl.Controls.Add(_btnSaveClient, 1, 7);
-
-            panel10.Controls.Add(tl);
-            panel10.BringToFront();
-            panel10.Refresh();
-            _addClientControlsCreated = true;
-        }
-
-        private async Task BtnSaveClient_ClickAsync(object? sender, EventArgs e)
-        {
-            var name = _txtClientName?.Text?.Trim() ?? string.Empty;
-            var surname = _txtClientSurname?.Text?.Trim() ?? string.Empty;
-            var second = _txtClientSecondName?.Text?.Trim() ?? string.Empty;
-            var address = _txtClientAddress?.Text?.Trim() ?? string.Empty;
-            var phone = _txtClientPhone?.Text?.Trim() ?? string.Empty;
-            var account = _txtClientAccount?.Text?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(surname) || string.IsNullOrEmpty(address) || string.IsNullOrEmpty(phone))
-            {
-                MessageBox.Show(this, "Заполните обязательные поля: Имя, Фамилия, Адрес, Телефон.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var res = MessageBox.Show(this, "Вы уверены что хотите добавить пользователя?", "Подтвердите добавление", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (res != DialogResult.Yes)
-                return;
-
-            try
-            {
-                var clientId = await AddClientToDatabaseAsync(name, surname, second, address, phone, string.IsNullOrEmpty(account) ? null : account);
-                if (clientId.HasValue)
-                {
-                    MessageBox.Show(this, $"Клиент добавлен (ID = {clientId.Value}).", "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    await LoadClientsWithCountsAsync();
-                    ClearAddClientControls();
-                }
-                else
-                {
-                    MessageBox.Show(this, "Не удалось добавить клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (FbException fbEx)
-            {
-                MessageBox.Show(this, $"Ошибка БД при добавлении клиента: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Ошибка при добавлении клиента: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void ClearAddClientControls()
-        {
-            if (!_addClientControlsCreated)
-                return;
-
-            _txtClientName = null;
-            _txtClientSurname = null;
-            _txtClientSecondName = null;
-            _txtClientAddress = null;
-            _txtClientPhone = null;
-            _txtClientAccount = null;
-            _btnSaveClient = null;
-
-            panel10.Controls.Clear();
-            _addClientControlsCreated = false;
-        }
-
-        private async Task<int?> AddClientToDatabaseAsync(string name, string surname, string? secondName, string address, string phone, string? accountNumber)
-        {
-            await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "ADD_CLIENT";
-            cmd.CommandType = System.Data.CommandType.StoredProcedure;
-
-            cmd.Parameters.AddWithValue("NAME", name);
-            cmd.Parameters.AddWithValue("SURNAME", surname);
-            cmd.Parameters.AddWithValue("SECOND_NAME", string.IsNullOrEmpty(secondName) ? (object)DBNull.Value : secondName);
-            cmd.Parameters.AddWithValue("ADDRESS", address);
-            cmd.Parameters.AddWithValue("PHONE", phone);
-            cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(accountNumber) ? (object)DBNull.Value : accountNumber);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                // Try common return column names
-                if (ColumnExists(reader, "CLIENT_ID") && !reader.IsDBNull(reader.GetOrdinal("CLIENT_ID")))
-                    return reader.GetInt32(reader.GetOrdinal("CLIENT_ID"));
-
-                if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
-                    return reader.GetInt32(reader.GetOrdinal("ID"));
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -1144,6 +732,11 @@ namespace SecurityAgencysApp
 
         }
 
+        private void button25_Click(object sender, EventArgs e)
+        {
+
+        }
+
         private void button24_Click(object sender, EventArgs e)
         {
 
@@ -1185,6 +778,7 @@ namespace SecurityAgencysApp
 
         }
 
+        // Кнопка "Обновить" на вкладке Объекты (designer: button9) — перезагружает dataGridView3
         private async void button9_Click(object sender, EventArgs e)
         {
             await LoadGuardedObjectsCombinedAsync();
@@ -1192,6 +786,7 @@ namespace SecurityAgencysApp
 
         private void button6_Click(object sender, EventArgs e)
         {
+            // Обновить представление "Клиенты" с подсчётами (при необходимости)
             _ = LoadClientsWithCountsAsync();
         }
 
@@ -1201,6 +796,11 @@ namespace SecurityAgencysApp
         }
 
         private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button20_Click(object sender, EventArgs e)
         {
 
         }
@@ -1305,9 +905,9 @@ namespace SecurityAgencysApp
 
         }
 
-        private async void button12_Click(object sender, EventArgs e)
+        private void button12_Click(object sender, EventArgs e)
         {
-            await LoadGuardCallsCombinedAsync();
+
         }
 
         private void button13_Click(object sender, EventArgs e)
