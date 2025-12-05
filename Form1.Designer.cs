@@ -181,6 +181,13 @@
             checkBox5 = new CheckBox();
             button33 = new Button();
             button34 = new Button();
+            panel17 = new Panel();
+            label1 = new Label();
+            richTextBox6 = new RichTextBox();
+            numericUpDown2 = new NumericUpDown();
+            label2 = new Label();
+            button36 = new Button();
+            panel25 = new Panel();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -236,6 +243,8 @@
             panel16.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView7).BeginInit();
             panel24.SuspendLayout();
+            panel17.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numericUpDown2).BeginInit();
             SuspendLayout();
             // 
             // tabPage5
@@ -1661,6 +1670,8 @@
             // 
             // tabPage6
             // 
+            tabPage6.Controls.Add(panel25);
+            tabPage6.Controls.Add(panel17);
             tabPage6.Controls.Add(panel16);
             tabPage6.Controls.Add(dataGridView7);
             tabPage6.Controls.Add(panel24);
@@ -1680,14 +1691,14 @@
             panel16.Controls.Add(button29);
             panel16.Location = new Point(6, 6);
             panel16.Name = "panel16";
-            panel16.Size = new Size(1239, 107);
+            panel16.Size = new Size(325, 107);
             panel16.TabIndex = 9;
             // 
             // button30
             // 
             button30.Location = new Point(3, 73);
             button30.Name = "button30";
-            button30.Size = new Size(1233, 29);
+            button30.Size = new Size(319, 29);
             button30.TabIndex = 2;
             button30.Text = "Удалить услугу";
             button30.UseVisualStyleBackColor = true;
@@ -1696,7 +1707,7 @@
             // 
             button31.Location = new Point(3, 38);
             button31.Name = "button31";
-            button31.Size = new Size(1233, 29);
+            button31.Size = new Size(319, 29);
             button31.TabIndex = 1;
             button31.Text = "Редактировать услугу";
             button31.UseVisualStyleBackColor = true;
@@ -1705,7 +1716,7 @@
             // 
             button29.Location = new Point(3, 3);
             button29.Name = "button29";
-            button29.Size = new Size(1233, 29);
+            button29.Size = new Size(319, 29);
             button29.TabIndex = 0;
             button29.Text = "Добавить услугу";
             button29.UseVisualStyleBackColor = true;
@@ -1714,10 +1725,10 @@
             // 
             dataGridView7.BackgroundColor = SystemColors.ControlLight;
             dataGridView7.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView7.Location = new Point(4, 123);
+            dataGridView7.Location = new Point(337, 6);
             dataGridView7.Name = "dataGridView7";
             dataGridView7.RowHeadersWidth = 51;
-            dataGridView7.Size = new Size(1241, 405);
+            dataGridView7.Size = new Size(908, 658);
             dataGridView7.TabIndex = 10;
             // 
             // panel24
@@ -1728,9 +1739,9 @@
             panel24.Controls.Add(checkBox5);
             panel24.Controls.Add(button33);
             panel24.Controls.Add(button34);
-            panel24.Location = new Point(5, 534);
+            panel24.Location = new Point(5, 343);
             panel24.Name = "panel24";
-            panel24.Size = new Size(1240, 130);
+            panel24.Size = new Size(326, 173);
             panel24.TabIndex = 11;
             // 
             // textBox12
@@ -1738,14 +1749,14 @@
             textBox12.Location = new Point(4, 3);
             textBox12.Name = "textBox12";
             textBox12.PlaceholderText = "Поиск";
-            textBox12.Size = new Size(1233, 27);
+            textBox12.Size = new Size(319, 27);
             textBox12.TabIndex = 2;
             // 
             // button32
             // 
-            button32.Location = new Point(0, 36);
+            button32.Location = new Point(4, 36);
             button32.Name = "button32";
-            button32.Size = new Size(1237, 29);
+            button32.Size = new Size(319, 29);
             button32.TabIndex = 3;
             button32.Text = "Сохранить в CSV";
             button32.UseVisualStyleBackColor = true;
@@ -1753,7 +1764,7 @@
             // checkBox5
             // 
             checkBox5.AutoSize = true;
-            checkBox5.Location = new Point(1052, 71);
+            checkBox5.Location = new Point(64, 141);
             checkBox5.Name = "checkBox5";
             checkBox5.Size = new Size(185, 24);
             checkBox5.TabIndex = 6;
@@ -1762,21 +1773,84 @@
             // 
             // button33
             // 
-            button33.Location = new Point(3, 71);
+            button33.Location = new Point(4, 106);
             button33.Name = "button33";
-            button33.Size = new Size(530, 56);
+            button33.Size = new Size(319, 29);
             button33.TabIndex = 4;
             button33.Text = "Обновить";
             button33.UseVisualStyleBackColor = true;
             // 
             // button34
             // 
-            button34.Location = new Point(539, 71);
+            button34.Location = new Point(4, 71);
             button34.Name = "button34";
-            button34.Size = new Size(507, 56);
+            button34.Size = new Size(319, 29);
             button34.TabIndex = 5;
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
+            // 
+            // panel17
+            // 
+            panel17.BackColor = Color.Gainsboro;
+            panel17.Controls.Add(button36);
+            panel17.Controls.Add(label2);
+            panel17.Controls.Add(numericUpDown2);
+            panel17.Controls.Add(richTextBox6);
+            panel17.Controls.Add(label1);
+            panel17.Location = new Point(6, 123);
+            panel17.Name = "panel17";
+            panel17.Size = new Size(325, 214);
+            panel17.TabIndex = 12;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(3, 15);
+            label1.Name = "label1";
+            label1.Size = new Size(80, 20);
+            label1.TabIndex = 0;
+            label1.Text = "Название:";
+            // 
+            // richTextBox6
+            // 
+            richTextBox6.Location = new Point(104, 12);
+            richTextBox6.Name = "richTextBox6";
+            richTextBox6.Size = new Size(218, 126);
+            richTextBox6.TabIndex = 1;
+            richTextBox6.Text = "";
+            // 
+            // numericUpDown2
+            // 
+            numericUpDown2.Location = new Point(104, 144);
+            numericUpDown2.Name = "numericUpDown2";
+            numericUpDown2.Size = new Size(218, 27);
+            numericUpDown2.TabIndex = 2;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(3, 146);
+            label2.Name = "label2";
+            label2.Size = new Size(86, 20);
+            label2.TabIndex = 3;
+            label2.Text = "Стоимость:";
+            // 
+            // button36
+            // 
+            button36.Location = new Point(3, 177);
+            button36.Name = "button36";
+            button36.Size = new Size(319, 29);
+            button36.TabIndex = 4;
+            button36.Text = "Сохранить";
+            button36.UseVisualStyleBackColor = true;
+            // 
+            // panel25
+            // 
+            panel25.BackColor = Color.Gainsboro;
+            panel25.Location = new Point(5, 522);
+            panel25.Name = "panel25";
+            panel25.Size = new Size(326, 142);
+            panel25.TabIndex = 13;
             // 
             // Form1
             // 
@@ -1855,6 +1929,9 @@
             ((System.ComponentModel.ISupportInitialize)dataGridView7).EndInit();
             panel24.ResumeLayout(false);
             panel24.PerformLayout();
+            panel17.ResumeLayout(false);
+            panel17.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numericUpDown2).EndInit();
             ResumeLayout(false);
         }
 
@@ -2012,5 +2089,12 @@
         private CheckBox checkBox5;
         private Button button33;
         private Button button34;
+        private Panel panel17;
+        private Label label1;
+        private Button button36;
+        private Label label2;
+        private NumericUpDown numericUpDown2;
+        private RichTextBox richTextBox6;
+        private Panel panel25;
     }
 }
