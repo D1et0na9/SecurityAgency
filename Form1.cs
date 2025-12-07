@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FirebirdSql.Data.FirebirdClient;
+using System.IO;
+using System.Drawing;
 
 namespace SecurityAgencysApp
 {
@@ -17,8 +19,16 @@ namespace SecurityAgencysApp
         {
             InitializeComponent();
 
+            // Подписываемся на Click кнопки сохранения (добавлено программно — чтобы не трогать Designer)
+            button26.Click += button26_Click;
+
             // Загружаем данные при старте формы
             Load += Form1_Load;
+
+            // В конструкторе — после InitializeComponent() и текущих подписок
+            dataGridView1.CellClick += dataGridView1_CellClick;
+            // Запрет редактирования richTextBox1
+            richTextBox1.ReadOnly = true;
         }
 
         private async void Form1_Load(object? sender, EventArgs e)
@@ -36,6 +46,13 @@ namespace SecurityAgencysApp
 
             // Загружаем типы услуг (в грид — dataGridView7)
             await LoadServiceTypesAsync();
+
+            // Загружаем справочник должностей для формы Добавления сотрудника
+            await LoadPositionsAsync();
+
+            // По умолчанию делаем panel8 недоступной для ввода (если нужно)
+            if (panel2 != null)
+                panel2.Enabled = false;
         }
 
         /// <summary>
@@ -58,14 +75,15 @@ namespace SecurityAgencysApp
 
                 var table = new DataTable();
 
-                // Создаём колонки, кроме ID и без BLOB (PHOTO)
-                table.Columns.Add("NAME", typeof(string)).Caption = "Имя";
+                // Создаём колонки, включая PHOTO для хранения байтов
                 table.Columns.Add("SURNAME", typeof(string)).Caption = "Фамилия";
+                table.Columns.Add("NAME", typeof(string)).Caption = "Имя";
                 table.Columns.Add("SECOND_NAME", typeof(string)).Caption = "Отчество";
                 table.Columns.Add("HIRE_DATE", typeof(DateTime)).Caption = "Дата приёма";
                 table.Columns.Add("SALARY", typeof(decimal)).Caption = "Оклад";
                 table.Columns.Add("EDUCATION", typeof(string)).Caption = "Образование";
                 table.Columns.Add("POSITION_NAME", typeof(string)).Caption = "Должность";
+                table.Columns.Add("PHOTO", typeof(byte[])); // скрытая колонка с BLOB
 
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
                 await using var cmd = conn.CreateCommand();
@@ -76,6 +94,7 @@ namespace SecurityAgencysApp
                 while (await reader.ReadAsync())
                 {
                     var row = table.NewRow();
+
 
                     if (ColumnExists(reader, "NAME") && !reader.IsDBNull(reader.GetOrdinal("NAME")))
                         row["NAME"] = reader.GetString(reader.GetOrdinal("NAME"));
@@ -98,6 +117,31 @@ namespace SecurityAgencysApp
                     if (ColumnExists(reader, "POSITION_NAME") && !reader.IsDBNull(reader.GetOrdinal("POSITION_NAME")))
                         row["POSITION_NAME"] = reader.GetString(reader.GetOrdinal("POSITION_NAME"));
 
+                    // Чтение PHOTO (BLOB) — сохраняем как byte[] в таблицу
+                    if (ColumnExists(reader, "PHOTO") && !reader.IsDBNull(reader.GetOrdinal("PHOTO")))
+                    {
+                        var ord = reader.GetOrdinal("PHOTO");
+                        // Узнаём размер BLOB
+                        long blobLength = reader.GetBytes(ord, 0, null, 0, 0);
+                        var buf = new byte[blobLength];
+                        long bytesRead = 0;
+                        int offset = 0;
+                        const int chunk = 65536;
+                        while (bytesRead < blobLength)
+                        {
+                            int toRead = (int)Math.Min(chunk, blobLength - bytesRead);
+                            var read = (int)reader.GetBytes(ord, bytesRead, buf, offset, toRead);
+                            bytesRead += read;
+                            offset += read;
+                            if (read == 0) break;
+                        }
+                        row["PHOTO"] = buf;
+                    }
+                    else
+                    {
+                        row["PHOTO"] = DBNull.Value;
+                    }
+
                     table.Rows.Add(row);
                 }
 
@@ -105,10 +149,11 @@ namespace SecurityAgencysApp
 
                 foreach (DataGridViewColumn col in dataGridView1.Columns)
                 {
-                    if (table.Columns.Contains(col.Name) && !string.IsNullOrEmpty(table.Columns[col.Name].Caption))
-                        col.HeaderText = table.Columns[col.Name].Caption;
+                    var colName = col?.Name;
+                    if (!string.IsNullOrEmpty(colName) && table.Columns.Contains(colName) && !string.IsNullOrEmpty(table.Columns[colName].Caption))
+                        col.HeaderText = table.Columns[colName].Caption;
 
-                    if (string.Equals(col.Name, "ID", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase))
                         col.Visible = false;
                 }
             }
@@ -119,6 +164,45 @@ namespace SecurityAgencysApp
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Ошибка при загрузке сотрудников: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает должности в comboBox3 (GET_POSITIONS)
+        /// </summary>
+        private async Task LoadPositionsAsync()
+        {
+            try
+            {
+                var table = new DataTable();
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "GET_POSITIONS";
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                await using var rdr = await cmd.ExecuteReaderAsync();
+                table.Load(rdr);
+
+                // Если SP вернула поля ID и NAME — привязываем
+                if (table.Columns.Contains("ID") && table.Columns.Contains("NAME"))
+                {
+                    comboBox3.DisplayMember = "NAME";
+                    comboBox3.ValueMember = "ID";
+                    comboBox3.DataSource = table;
+                }
+                else
+                {
+                    // В случае неожиданного результата — очистим источник
+                    comboBox3.DataSource = null;
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке должностей (БД): {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке должностей: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -286,15 +370,16 @@ namespace SecurityAgencysApp
                 // Настройка отображения: скрыть столбец ID, установить заголовки
                 foreach (DataGridViewColumn col in dataGridView2.Columns)
                 {
-                    if (clientsTable.Columns.Contains(col.Name) && !string.IsNullOrEmpty(clientsTable.Columns[col.Name].Caption))
-                        col.HeaderText = clientsTable.Columns[col.Name].Caption;
+                    var colName = col?.Name;
+                    if (!string.IsNullOrEmpty(colName) && clientsTable.Columns.Contains(colName) && !string.IsNullOrEmpty(clientsTable.Columns[colName].Caption))
+                        col.HeaderText = clientsTable.Columns[colName].Caption;
 
-                    if (string.Equals(col.Name, "ID", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase))
                         col.Visible = false;
 
-                    // Делаем колонки с числами компактными
-                    if (string.Equals(col.Name, "OBJECT_COUNT", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(col.Name, "ORDER_COUNT", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(colName) &&
+                        (string.Equals(colName, "OBJECT_COUNT", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(colName, "ORDER_COUNT", StringComparison.OrdinalIgnoreCase)))
                     {
                         col.FillWeight = 10;
                         col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -451,10 +536,11 @@ namespace SecurityAgencysApp
                 // Настройка отображения: скрыть столбец ID и настроить заголовки
                 foreach (DataGridViewColumn col in dataGridView3.Columns)
                 {
-                    if (table.Columns.Contains(col.Name) && !string.IsNullOrEmpty(table.Columns[col.Name].Caption))
-                        col.HeaderText = table.Columns[col.Name].Caption;
+                    var colName = col?.Name;
+                    if (!string.IsNullOrEmpty(colName) && table.Columns.Contains(colName) && !string.IsNullOrEmpty(table.Columns[colName].Caption))
+                        col.HeaderText = table.Columns[colName].Caption;
 
-                    if (string.Equals(col.Name, "ID", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase))
                         col.Visible = false;
                 }
 
@@ -561,7 +647,7 @@ namespace SecurityAgencysApp
                             orderInfo[id] = (orderDate, total);
                         }
                     }
-                }
+                };
 
                 // 3) Получим детали заказов (GET_ORDER_DETAILS) и агрегируем названия услуг и итог по заказу
                 var servicesByOrder = new Dictionary<int, List<string>>();
@@ -778,12 +864,16 @@ namespace SecurityAgencysApp
 
                 foreach (DataGridViewColumn col in dataGridView7.Columns)
                 {
-                    if (hdr.TryGetValue(col.Name, out var caption))
+                    var colName = col?.Name;
+                    if (string.IsNullOrEmpty(colName)) continue;
+
+                    if (hdr.TryGetValue(colName, out var caption))
+                    {
                         col.HeaderText = caption;
+                    }
                     else
                     {
-                        // Падение: заменим подчеркивания пробелами и приведём к "человеческому" виду
-                        var n = col.Name.Replace('_', ' ').Trim();
+                        var n = colName.Replace('_', ' ').Trim();
                         if (!string.IsNullOrEmpty(n))
                             col.HeaderText = char.ToUpperInvariant(n[0]) + (n.Length > 1 ? n.Substring(1).ToLowerInvariant() : string.Empty);
                     }
@@ -818,7 +908,34 @@ namespace SecurityAgencysApp
 
         private void button25_Click(object sender, EventArgs e)
         {
+            // Сделать элементы panel6 доступными для ввода и очистить их
+            if (panel2 == null) return;
 
+            panel2.Enabled = true;
+
+            // Очистим поля внутри panel6
+            foreach (Control c in panel2.Controls)
+            {
+                switch (c)
+                {
+                    case TextBox tb:
+                        tb.Clear();
+                        break;
+                    case RichTextBox rtb:
+                        rtb.Clear();
+                        break;
+                    case ComboBox cb:
+                        cb.SelectedIndex = -1;
+                        break;
+                    case NumericUpDown nud:
+                        nud.Value = nud.Minimum;
+                        break;
+                }
+            }
+
+            // Переместим фокус на первый элемент
+            if (panel2.Controls.Count > 0)
+                panel2.Controls[0].Focus();
         }
 
         private void button24_Click(object sender, EventArgs e)
@@ -844,6 +961,7 @@ namespace SecurityAgencysApp
         private async void button1_Click(object sender, EventArgs e)
         {
             // Сохранение в CSV — оставлено без изменений пока
+            await Task.CompletedTask;
         }
 
         private async void button2_Click(object sender, EventArgs e)
@@ -1044,5 +1162,182 @@ namespace SecurityAgencysApp
 
         }
 
+        /// <summary>
+        /// Обработчик кнопки Сохранить (button26). Подтверждение -> вызов ADD_EMPLOYEE -> обновление грида.
+        /// </summary>
+        private async void button26_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                var dr = MessageBox.Show(this, "Вы уверены что хотите добавить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Сбор данных из полей (panel2)
+                var name = textBox5.Text.Trim();
+                var surname = textBox6.Text.Trim();
+                var secondName = textBox7.Text.Trim();
+                var hireDate = dateTimePicker3.Value.Date;
+                var salary = numericUpDown1.Value;
+                var education = textBox8.Text.Trim();
+
+                int positionId = -1;
+                if (comboBox3?.SelectedValue != null)
+                {
+                    // SelectedValue может быть DataRowView/decimal/string — безопасно парсим
+                    if (!int.TryParse(comboBox3.SelectedValue.ToString(), out positionId))
+                        positionId = -1;
+                }
+
+                // Простая валидация
+                if (string.IsNullOrEmpty(name))
+                {
+                    MessageBox.Show(this, "Введите имя сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(surname))
+                {
+                    MessageBox.Show(this, "Введите фамилию сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (positionId <= 0)
+                {
+                    MessageBox.Show(this, "Выберите должность.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Вызов хранимой процедуры ADD_EMPLOYEE
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "ADD_EMPLOYEE";
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Параметры. Фото пока отправляем NULL.
+                cmd.Parameters.AddWithValue("NAME", name);
+                cmd.Parameters.AddWithValue("SURNAME", surname);
+                cmd.Parameters.AddWithValue("SECOND_NAME", secondName);
+                cmd.Parameters.AddWithValue("HIRE_DATE", hireDate);
+                cmd.Parameters.AddWithValue("SALARY", salary);
+                cmd.Parameters.AddWithValue("EDUCATION", education);
+                cmd.Parameters.AddWithValue("POSITION_ID", positionId);
+                cmd.Parameters.AddWithValue("PHOTO", DBNull.Value);
+
+                int newId = -1;
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
+                        newId = reader.GetInt32(reader.GetOrdinal("ID"));
+                }
+
+                if (newId > 0)
+                {
+                    MessageBox.Show(this, $"Сотрудник успешно добавлен (ID: {newId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Очистим поля ввода (по желанию)
+                    textBox5.Clear();
+                    textBox6.Clear();
+                    textBox7.Clear();
+                    numericUpDown1.Value = numericUpDown1.Minimum;
+                    textBox8.Clear();
+                    if (comboBox3 != null) comboBox3.SelectedIndex = -1;
+                    dateTimePicker3.Value = DateTime.Today;
+
+                    // Обновляем грид сотрудников
+                    await LoadEmployeesAsync();
+                }
+                else
+                {
+                    MessageBox.Show(this, "Сотрудник добавлен, но не удалось получить ID.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    await LoadEmployeesAsync();
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при добавлении сотрудника: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при добавлении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void dataGridView1_CellClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            var row = dataGridView1.Rows[e.RowIndex];
+
+            string surname = GetRowCellString(row, "SURNAME");
+            string name = GetRowCellString(row, "NAME");
+            string secondName = GetRowCellString(row, "SECOND_NAME");
+
+            var fio = string.Join(" ", new[] { surname, name, secondName }.Where(s => !string.IsNullOrEmpty(s)));
+            richTextBox1.Text = fio;
+
+            // Показываем фото (если есть)
+            var bytes = GetRowCellBytes(row, "PHOTO");
+            if (bytes != null && bytes.Length > 0)
+            {
+                try
+                {
+                    // Освободим предыдущее изображение чтобы избежать утечек
+                    if (pictureBox1.Image != null)
+                    {
+                        var old = pictureBox1.Image;
+                        pictureBox1.Image = null;
+                        old.Dispose();
+                    }
+
+                    using var ms = new MemoryStream(bytes);
+                    var img = Image.FromStream(ms);
+                    pictureBox1.Image = new Bitmap(img); // копия в памяти
+                    pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+                }
+                catch
+                {
+                    pictureBox1.Image = null; // при ошибке просто очистим
+                }
+            }
+            else
+            {
+                // Нет фото — очистим
+                if (pictureBox1.Image != null)
+                {
+                    var old = pictureBox1.Image;
+                    pictureBox1.Image = null;
+                    old.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Получает байтовый массив из указанной колонки DataGridViewRow (если есть).
+        /// </summary>
+        private static byte[]? GetRowCellBytes(DataGridViewRow row, string columnName)
+        {
+            var dgv = row.DataGridView;
+            if (dgv == null) return null;
+            if (!dgv.Columns.Contains(columnName)) return null;
+
+            var idx = dgv.Columns[columnName].Index;
+            var val = row.Cells[idx].Value;
+            return val as byte[];
+        }
+
+        /// <summary>
+        /// Безопасно получает строковое значение из строки по имени колонки (если колонка есть).
+        /// </summary>
+        private static string GetRowCellString(DataGridViewRow row, string columnName)
+        {
+            var dgv = row.DataGridView;
+            if (dgv == null) return string.Empty;
+            if (!dgv.Columns.Contains(columnName)) return string.Empty;
+
+            var idx = dgv.Columns[columnName].Index;
+            var val = row.Cells[idx].Value;
+            return val?.ToString() ?? string.Empty;
+        }
     }
 }
