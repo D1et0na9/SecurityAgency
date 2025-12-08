@@ -1244,6 +1244,10 @@ namespace SecurityAgencysApp
                     if (comboBox3 != null) comboBox3.SelectedIndex = -1;
                     dateTimePicker3.Value = DateTime.Today;
 
+                    // Блокируем panel2 после успешного добавления
+                    if (panel2 != null)
+                        panel2.Enabled = false;
+
                     // Обновляем грид сотрудников
                     await LoadEmployeesAsync();
                 }
