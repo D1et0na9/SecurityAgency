@@ -31,6 +31,9 @@ namespace SecurityAgencysApp
             button26.Click += button26_Click;
             //button23.Click += button23_Click;
 
+            // Подписываемся на кнопку удаления сотрудника
+            button37.Click += button37_Click;
+
             // Загружаем данные при старте формы
             Load += Form1_Load;
 
@@ -1730,6 +1733,57 @@ namespace SecurityAgencysApp
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Не удалось загрузить изображение: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Обработчик кнопки Удалить (button37). Удаляет сотрудника и перезагружает список.
+        /// </summary>
+        private async void button37_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Проверим выбранную строку
+                if (dataGridView1.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите сотрудника в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Получаем ID из скрытой колонки "ID"
+                var idStr = GetRowCellString(dataGridView1.CurrentRow, "ID");
+                if (!int.TryParse(idStr, out var employeeId) || employeeId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Подтверждение удаления
+                var dr = MessageBox.Show(this, "Вы уверены что хотите удалить данную запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов процедуры DELETE_EMPLOYEE
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE_EMPLOYEE";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("EMPLOYEE_ID", employeeId);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                MessageBox.Show(this, "Сотрудник успешно удалён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Обновим грид сотрудников
+                await LoadEmployeesAsync();
+            }
+            catch (FbException fbEx)
+            {
+                // Отобразим сообщение от СУБД (например, исключение EX_EMPLOYEE_HAS_CALLS)
+                MessageBox.Show(this, $"Ошибка БД при удалении сотрудника: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при удалении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

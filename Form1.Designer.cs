@@ -187,6 +187,7 @@
             checkBox5 = new CheckBox();
             button33 = new Button();
             button34 = new Button();
+            button37 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -1426,6 +1427,7 @@
             // panel6
             // 
             panel6.BackColor = Color.Gainsboro;
+            panel6.Controls.Add(button37);
             panel6.Controls.Add(richTextBox1);
             panel6.Controls.Add(button25);
             panel6.Controls.Add(button24);
@@ -1466,13 +1468,10 @@
             // 
             // button23
             // 
-            //button23.Location = new Point(3, 223);
-            //button23.Name = "button23";
-            //button23.Size = new Size(249, 29);
-            //button23.TabIndex = 0;
-            //button23.Text = "Удалить сотрудника";
-            //button23.UseVisualStyleBackColor = true;
-            //button23.Click += button23_Click;
+            button23.Location = new Point(0, 0);
+            button23.Name = "button23";
+            button23.Size = new Size(75, 23);
+            button23.TabIndex = 4;
             // 
             // panel2
             // 
@@ -1852,6 +1851,15 @@
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
             // 
+            // button37
+            // 
+            button37.Location = new Point(3, 223);
+            button37.Name = "button37";
+            button37.Size = new Size(249, 29);
+            button37.TabIndex = 5;
+            button37.Text = "Удалить сотрудника";
+            button37.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -2096,5 +2104,6 @@
         private NumericUpDown numericUpDown2;
         private RichTextBox richTextBox6;
         private Panel panel25;
+        private Button button37;
     }
 }
