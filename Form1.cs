@@ -20,6 +20,8 @@ namespace SecurityAgencysApp
         private enum EditEntityType { Employee, Client, Position }
         private EditEntityType _editEntity = EditEntityType.Employee;
         private int _editingId = -1;
+        // Текущее фото, загруженное через pictureBox1 (или взятое из грида)
+        private byte[]? _currentPhoto;
 
         public Form1()
         {
@@ -36,6 +38,9 @@ namespace SecurityAgencysApp
             dataGridView1.CellClick += dataGridView1_CellClick;
             // Запрет редактирования richTextBox1
             richTextBox1.ReadOnly = true;
+
+            // Подписываемся на DoubleClick для загрузки фото (активируется, когда panel2 и pictureBox1 включены)
+            pictureBox1.DoubleClick += pictureBox1_DoubleClick;
         }
 
         private async void Form1_Load(object? sender, EventArgs e)
@@ -412,7 +417,7 @@ namespace SecurityAgencysApp
         /// <summary>
         /// Загрузить GUARDEDOBJECTS и "приклеить" к каждому:
         /// - поля CLIENT_FIO (из GET_GUARDEDOBJECTS)
-        /// - агрегированную информацию по GUARDCALLS: количество вызовов и данные последнего вызова
+        /// -aggregированную информацию по GUARDCALLS: количество вызовов и данные последнего вызова
         /// Результат отображается в одном DataGridView — dataGridView3. ID не показывается.
         /// Все поля — только для чтения.
         /// </summary>
@@ -945,9 +950,26 @@ namespace SecurityAgencysApp
                 }
             }
 
+            // Очистим текущее фото — пользователь может загрузить новое
+            _currentPhoto = null;
+            if (pictureBox1 != null)
+            {
+                if (pictureBox1.Image != null)
+                {
+                    var old = pictureBox1.Image;
+                    pictureBox1.Image = null;
+                    old.Dispose();
+                }
+                pictureBox1.Enabled = true;
+                pictureBox1.Cursor = Cursors.Hand;
+            }
+
             // Переместим фокус на первый элемент
             if (panel2.Controls.Count > 0)
                 panel2.Controls[0].Focus();
+
+            // Режим редактирования — добавление
+            _isEditMode = false;
         }
 
         private void button24_Click(object sender, EventArgs e)
@@ -1031,6 +1053,30 @@ namespace SecurityAgencysApp
                     if (comboBox3 != null)
                         comboBox3.SelectedIndex = -1;
                 }
+
+                // Подхватим фото из выбранной строки (если есть) в _currentPhoto и покажем в pictureBox1
+                var bytes = GetRowCellBytes(row, "PHOTO");
+                _currentPhoto = bytes;
+                if (bytes != null && bytes.Length > 0)
+                {
+                    try
+                    {
+                        if (pictureBox1.Image != null)
+                        {
+                            var old = pictureBox1.Image;
+                            pictureBox1.Image = null;
+                            old.Dispose();
+                        }
+                        using var ms = new MemoryStream(bytes);
+                        var img = Image.FromStream(ms);
+                        pictureBox1.Image = new Bitmap(img);
+                        pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+                    }
+                    catch
+                    {
+                        // игнорируем ошибку отображения
+                    }
+                }
             }
             else if (_editEntity == EditEntityType.Client)
             {
@@ -1043,16 +1089,35 @@ namespace SecurityAgencysApp
                 // Если в panel2 есть поле для телефона/счёта — пытаемся заполнить по возможным именам контролов
                 SetControlTextSafe(panel2, new[] { "textBoxPhone", "maskedTextBoxPhone", "textBox9" }, GetRowCellString(row, "PHONE"));
                 SetControlTextSafe(panel2, new[] { "textBoxAccount", "textBox10" }, GetRowCellString(row, "ACCOUNT_NUMBER"));
+
+                // Для клиентов фото не используется — сбрасываем текущее фото
+                _currentPhoto = null;
+                if (pictureBox1 != null)
+                {
+                    if (pictureBox1.Image != null)
+                    {
+                        var old = pictureBox1.Image;
+                        pictureBox1.Image = null;
+                        old.Dispose();
+                    }
+                }
             }
             else if (_editEntity == EditEntityType.Position)
             {
                 // Если будете поддерживать редактирование позиций — сюда поместите заполнение
                 SetControlTextSafe(panel2, new[] { "textBox5", "textBoxPositionName" }, GetRowCellString(row, "NAME"));
+                _currentPhoto = null;
             }
 
-            // Включаем редактирование
+            // Включаем редактирование и возможность двойного клика по pictureBox1 для загрузки фото
             if (panel2 != null)
                 panel2.Enabled = true;
+
+            if (pictureBox1 != null)
+            {
+                pictureBox1.Enabled = (_editEntity == EditEntityType.Employee);
+                pictureBox1.Cursor = pictureBox1.Enabled ? Cursors.Hand : Cursors.Default;
+            }
 
             _isEditMode = true;
 
@@ -1496,8 +1561,9 @@ namespace SecurityAgencysApp
             var fio = string.Join(" ", new[] { surname, name, secondName }.Where(s => !string.IsNullOrEmpty(s)));
             richTextBox1.Text = fio;
 
-            // Показываем фото (если есть)
+            // Показываем фото (если есть) и сохраняем в _currentPhoto
             var bytes = GetRowCellBytes(row, "PHOTO");
+            _currentPhoto = bytes;
             if (bytes != null && bytes.Length > 0)
             {
                 try
@@ -1601,6 +1667,45 @@ namespace SecurityAgencysApp
                 default:
                     ctrl.Text = text;
                     break;
+            }
+        }
+
+        private void pictureBox1_DoubleClick(object? sender, EventArgs? e)
+        {
+            // Разрешаем загрузку фото только если panel2 включена и pictureBox1 активен
+            if (panel2 == null || !panel2.Enabled) return;
+            if (pictureBox1 == null || !pictureBox1.Enabled) return;
+
+            using var ofd = new OpenFileDialog
+            {
+                Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp;*.gif)|*.jpg;*.jpeg;*.png;*.bmp;*.gif|All files (*.*)|*.*",
+                Title = "Выберите изображение"
+            };
+
+            if (ofd.ShowDialog(this) != DialogResult.OK) return;
+
+            try
+            {
+                var bytes = File.ReadAllBytes(ofd.FileName);
+                // Обновим текущую картинку в UI
+                if (pictureBox1.Image != null)
+                {
+                    var old = pictureBox1.Image;
+                    pictureBox1.Image = null;
+                    old.Dispose();
+                }
+
+                using var ms = new MemoryStream(bytes);
+                var img = Image.FromStream(ms);
+                pictureBox1.Image = new Bitmap(img);
+                pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+
+                // Сохраним байты для отправки в БД при сохранении
+                _currentPhoto = bytes;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Не удалось загрузить изображение: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
