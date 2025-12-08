@@ -98,7 +98,7 @@ namespace SecurityAgencysApp
                 table.Columns.Add("SALARY", typeof(decimal)).Caption = "Оклад";
                 table.Columns.Add("EDUCATION", typeof(string)).Caption = "Образование";
                 table.Columns.Add("POSITION_NAME", typeof(string)).Caption = "Должность";
-                table.Columns.Add("PHOTO", typeof(byte[])); // скрытая колонка с BLOB
+                table.Columns.Add("PHOTO", typeof(byte[])); // хранит BLOB, но не показываем в гриде
 
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
                 await using var cmd = conn.CreateCommand();
@@ -134,11 +134,10 @@ namespace SecurityAgencysApp
                     if (ColumnExists(reader, "POSITION_NAME") && !reader.IsDBNull(reader.GetOrdinal("POSITION_NAME")))
                         row["POSITION_NAME"] = reader.GetString(reader.GetOrdinal("POSITION_NAME"));
 
-                    // Чтение PHOTO (BLOB) — сохраняем как byte[] в таблицу
+                    // Чтение PHOTO (BLOB) — сохраняем как byte[] в таблицу (не показываем в гриде)
                     if (ColumnExists(reader, "PHOTO") && !reader.IsDBNull(reader.GetOrdinal("PHOTO")))
                     {
                         var ord = reader.GetOrdinal("PHOTO");
-                        // Узнаём размер BLOB
                         long blobLength = reader.GetBytes(ord, 0, null, 0, 0);
                         var buf = new byte[blobLength];
                         long bytesRead = 0;
@@ -170,8 +169,13 @@ namespace SecurityAgencysApp
                     if (!string.IsNullOrEmpty(colName) && table.Columns.Contains(colName) && !string.IsNullOrEmpty(table.Columns[colName].Caption))
                         col.HeaderText = table.Columns[colName].Caption;
 
-                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase))
+                    // Скрываем служебные колонки ID и PHOTO
+                    if (!string.IsNullOrEmpty(colName) &&
+                        (string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(colName, "PHOTO", StringComparison.OrdinalIgnoreCase)))
+                    {
                         col.Visible = false;
+                    }
                 }
             }
             catch (FbException fbEx)
@@ -685,7 +689,7 @@ namespace SecurityAgencysApp
                             if (ColumnExists(rdr, "SERVICENAME") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICENAME")))
                                 servName = rdr.GetString(rdr.GetOrdinal("SERVICENAME"));
 
-                            decimal lineTotal = 0;
+                                    decimal lineTotal = 0;
                             if (ColumnExists(rdr, "TOTAL_LINE") && !rdr.IsDBNull(rdr.GetOrdinal("TOTAL_LINE")))
                                 lineTotal = rdr.GetDecimal(rdr.GetOrdinal("TOTAL_LINE"));
                             else if (ColumnExists(rdr, "SERVICE_AMOUNT") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICE_AMOUNT"))
@@ -1412,7 +1416,6 @@ namespace SecurityAgencysApp
                             // Параметры UPDATE_POSITION: ID, NAME
                             cmd.Parameters.AddWithValue("ID", _editingId);
 
-                            // имя позиции: берем из текстового поля panel2 (textBox5 или специально именованного)
                             var posName = GetControlTextSafe(panel2, new[] { "textBoxPositionName", "textBox5" }).Trim();
                             cmd.Parameters.AddWithValue("NAME", posName);
 
@@ -1436,11 +1439,12 @@ namespace SecurityAgencysApp
                             cmd.Parameters.AddWithValue("NAME", textBox5.Text.Trim());
                             cmd.Parameters.AddWithValue("SURNAME", textBox6.Text.Trim());
                             cmd.Parameters.AddWithValue("SECOND_NAME", textBox7.Text.Trim());
-                            cmd.Parameters.AddWithValue("HIRE_DATE", dateTimePicker3.Value.Date);
-                            cmd.Parameters.AddWithValue("SALARY", numericUpDown1.Value);
-                            cmd.Parameters.AddWithValue("EDUCATION", textBox8.Text.Trim());
-                            cmd.Parameters.AddWithValue("POSITION_ID", comboBox3?.SelectedValue ?? DBNull.Value);
-                            cmd.Parameters.AddWithValue("PHOTO", DBNull.Value);
+                            cmd.Parameters.AddWithValue("HIRE_DATE", hireDate);
+                            cmd.Parameters.AddWithValue("SALARY", salary);
+                            cmd.Parameters.AddWithValue("EDUCATION", education);
+                            cmd.Parameters.AddWithValue("POSITION_ID", positionId > 0 ? (object)positionId : DBNull.Value);
+                            // Передаём байты или DBNull
+                            cmd.Parameters.AddWithValue("PHOTO", _currentPhoto != null ? (object)_currentPhoto : DBNull.Value);
 
                             await cmd.ExecuteNonQueryAsync();
 
@@ -1448,7 +1452,13 @@ namespace SecurityAgencysApp
 
                             _isEditMode = false;
                             _editingId = -1;
+                            _currentPhoto = null;
                             if (panel2 != null) panel2.Enabled = false;
+                            if (pictureBox1 != null)
+                            {
+                                pictureBox1.Enabled = false;
+                                pictureBox1.Cursor = Cursors.Default;
+                            }
 
                             await LoadEmployeesAsync();
                             return;
@@ -1461,7 +1471,7 @@ namespace SecurityAgencysApp
                     }
                 }
 
-                // Ниже — существующая логика добавления (ADD_EMPLOYEE). Оставлена без изменений.
+                // Ниже — существующая логика добавления (ADD_EMPLOYEE)
                 var addConfirm = MessageBox.Show(this, "Вы уверены что хотите добавить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (addConfirm != DialogResult.Yes) return;
 
@@ -1499,7 +1509,8 @@ namespace SecurityAgencysApp
                     cmd2.Parameters.AddWithValue("SALARY", salary);
                     cmd2.Parameters.AddWithValue("EDUCATION", education);
                     cmd2.Parameters.AddWithValue("POSITION_ID", positionId);
-                    cmd2.Parameters.AddWithValue("PHOTO", DBNull.Value);
+                    // Передаём фото (байты) или DBNull
+                    cmd2.Parameters.AddWithValue("PHOTO", _currentPhoto != null ? (object)_currentPhoto : DBNull.Value);
 
                     int newId = -1;
                     await using var reader = await cmd2.ExecuteReaderAsync();
@@ -1521,6 +1532,19 @@ namespace SecurityAgencysApp
                         textBox8.Clear();
                         if (comboBox3 != null) comboBox3.SelectedIndex = -1;
                         dateTimePicker3.Value = DateTime.Today;
+
+                        _currentPhoto = null;
+                        if (pictureBox1 != null)
+                        {
+                            if (pictureBox1.Image != null)
+                            {
+                                var old = pictureBox1.Image;
+                                pictureBox1.Image = null;
+                                old.Dispose();
+                            }
+                            pictureBox1.Enabled = false;
+                            pictureBox1.Cursor = Cursors.Default;
+                        }
 
                         if (panel2 != null)
                             panel2.Enabled = false;
