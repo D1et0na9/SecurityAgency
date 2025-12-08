@@ -1466,13 +1466,13 @@
             // 
             // button23
             // 
-            button23.Location = new Point(3, 223);
-            button23.Name = "button23";
-            button23.Size = new Size(249, 29);
-            button23.TabIndex = 0;
-            button23.Text = "Удалить сотрудника";
-            button23.UseVisualStyleBackColor = true;
-            button23.Click += button23_Click;
+            //button23.Location = new Point(3, 223);
+            //button23.Name = "button23";
+            //button23.Size = new Size(249, 29);
+            //button23.TabIndex = 0;
+            //button23.Text = "Удалить сотрудника";
+            //button23.UseVisualStyleBackColor = true;
+            //button23.Click += button23_Click;
             // 
             // panel2
             // 

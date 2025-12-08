@@ -15,12 +15,19 @@ namespace SecurityAgencysApp
         private readonly Dictionary<string, UserControl> _views = new();
         private UserControl? _currentView;
 
+        // Добавлены поля в класс Form1
+        private bool _isEditMode = false;
+        private enum EditEntityType { Employee, Client, Position }
+        private EditEntityType _editEntity = EditEntityType.Employee;
+        private int _editingId = -1;
+
         public Form1()
         {
             InitializeComponent();
 
             // Подписываемся на Click кнопки сохранения (добавлено программно — чтобы не трогать Designer)
             button26.Click += button26_Click;
+            //button23.Click += button23_Click;
 
             // Загружаем данные при старте формы
             Load += Form1_Load;
@@ -75,6 +82,9 @@ namespace SecurityAgencysApp
 
                 var table = new DataTable();
 
+                // Добавляем скрытую колонку ID для корректного редактирования
+                table.Columns.Add("ID", typeof(int));
+
                 // Создаём колонки, включая PHOTO для хранения байтов
                 table.Columns.Add("SURNAME", typeof(string)).Caption = "Фамилия";
                 table.Columns.Add("NAME", typeof(string)).Caption = "Имя";
@@ -95,6 +105,8 @@ namespace SecurityAgencysApp
                 {
                     var row = table.NewRow();
 
+                    if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
+                        row["ID"] = reader.GetInt32(reader.GetOrdinal("ID"));
 
                     if (ColumnExists(reader, "NAME") && !reader.IsDBNull(reader.GetOrdinal("NAME")))
                         row["NAME"] = reader.GetString(reader.GetOrdinal("NAME"));
@@ -940,12 +952,112 @@ namespace SecurityAgencysApp
 
         private void button24_Click(object sender, EventArgs e)
         {
+            // Решаем, какая сетка содержит выбранную строку: clients (dataGridView2) имеет приоритет над employees (dataGridView1)
+            DataGridViewRow? row = null;
+            if (dataGridView2 != null && dataGridView2.CurrentRow != null)
+            {
+                _editEntity = EditEntityType.Client;
+                row = dataGridView2.CurrentRow;
+            }
+            else if (dataGridView1 != null && dataGridView1.CurrentRow != null)
+            {
+                _editEntity = EditEntityType.Employee;
+                row = dataGridView1.CurrentRow;
+            }
+            else
+            {
+                MessageBox.Show(this, "Выберите строку в списке (Клиенты или Сотрудники).", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
-        }
+            if (row == null)
+            {
+                MessageBox.Show(this, "Не удалось получить выбранную строку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-        private void button23_Click(object sender, EventArgs e)
-        {
+            // Сохранить ID (если есть колонка ID)
+            _editingId = -1;
+            if (row.DataGridView.Columns.Contains("ID"))
+            {
+                var idStr = GetRowCellString(row, "ID");
+                if (!int.TryParse(idStr, out _editingId))
+                    _editingId = -1;
+            }
 
+            // Заполнение полей panel2 в зависимости от редактируемой сущности
+            if (_editEntity == EditEntityType.Employee)
+            {
+                textBox5.Text = GetRowCellString(row, "NAME");
+                textBox6.Text = GetRowCellString(row, "SURNAME");
+                textBox7.Text = GetRowCellString(row, "SECOND_NAME");
+
+                if (row.DataGridView.Columns.Contains("HIRE_DATE"))
+                {
+                    var s = GetRowCellString(row, "HIRE_DATE");
+                    if (DateTime.TryParse(s, out var dt))
+                        dateTimePicker3.Value = dt;
+                }
+
+                if (row.DataGridView.Columns.Contains("SALARY"))
+                {
+                    var s = GetRowCellString(row, "SALARY");
+                    if (decimal.TryParse(s, out var sal))
+                    {
+                        sal = Math.Max(numericUpDown1.Minimum, Math.Min(numericUpDown1.Maximum, sal));
+                        numericUpDown1.Value = sal;
+                    }
+                }
+
+                textBox8.Text = GetRowCellString(row, "EDUCATION");
+
+                var posName = GetRowCellString(row, "POSITION_NAME");
+                if (!string.IsNullOrEmpty(posName) && comboBox3?.DataSource != null)
+                {
+                    for (int i = 0; i < comboBox3.Items.Count; i++)
+                    {
+                        if (comboBox3.Items[i] is DataRowView drv && drv.Row.Table.Columns.Contains("NAME"))
+                        {
+                            if (string.Equals(drv["NAME"].ToString(), posName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                comboBox3.SelectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if (comboBox3 != null)
+                        comboBox3.SelectedIndex = -1;
+                }
+            }
+            else if (_editEntity == EditEntityType.Client)
+            {
+                // В таблице clients есть колонки NAME, SURNAME, SECOND_NAME, ADDRESS, PHONE, ACCOUNT_NUMBER
+                textBox5.Text = GetRowCellString(row, "NAME"); // используем те же поля panel2 для заполнения
+                textBox6.Text = GetRowCellString(row, "SURNAME");
+                textBox7.Text = GetRowCellString(row, "SECOND_NAME");
+                textBox8.Text = GetRowCellString(row, "ADDRESS");
+
+                // Если в panel2 есть поле для телефона/счёта — пытаемся заполнить по возможным именам контролов
+                SetControlTextSafe(panel2, new[] { "textBoxPhone", "maskedTextBoxPhone", "textBox9" }, GetRowCellString(row, "PHONE"));
+                SetControlTextSafe(panel2, new[] { "textBoxAccount", "textBox10" }, GetRowCellString(row, "ACCOUNT_NUMBER"));
+            }
+            else if (_editEntity == EditEntityType.Position)
+            {
+                // Если будете поддерживать редактирование позиций — сюда поместите заполнение
+                SetControlTextSafe(panel2, new[] { "textBox5", "textBoxPositionName" }, GetRowCellString(row, "NAME"));
+            }
+
+            // Включаем редактирование
+            if (panel2 != null)
+                panel2.Enabled = true;
+
+            _isEditMode = true;
+
+            if (panel2?.Controls.Count > 0)
+                panel2.Controls[0].Focus();
         }
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -1169,10 +1281,7 @@ namespace SecurityAgencysApp
         {
             try
             {
-                var dr = MessageBox.Show(this, "Вы уверены что хотите добавить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (dr != DialogResult.Yes) return;
-
-                // Сбор данных из полей (panel2)
+                // Сбор данных из полей (panel2) — общие для добавления/обновления
                 var name = textBox5.Text.Trim();
                 var surname = textBox6.Text.Trim();
                 var secondName = textBox7.Text.Trim();
@@ -1183,12 +1292,115 @@ namespace SecurityAgencysApp
                 int positionId = -1;
                 if (comboBox3?.SelectedValue != null)
                 {
-                    // SelectedValue может быть DataRowView/decimal/string — безопасно парсим
                     if (!int.TryParse(comboBox3.SelectedValue.ToString(), out positionId))
                         positionId = -1;
                 }
 
-                // Простая валидация
+                if (_isEditMode)
+                {
+                    var dr = MessageBox.Show(this, "Вы уверены что хотите изменить информацию?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
+
+                    if (_editingId <= 0)
+                    {
+                        MessageBox.Show(this, "Не удалось определить ID записи для изменения.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    try
+                    {
+                        await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                        await using var cmd = conn.CreateCommand();
+
+                        if (_editEntity == EditEntityType.Client)
+                        {
+                            cmd.CommandText = "UPDATE_CLIENT";
+                            cmd.CommandType = CommandType.StoredProcedure;
+
+                            // Параметры процедуры UPDATE_CLIENT: ID, NAME, SURNAME, SECOND_NAME, ADDRESS, PHONE, ACCOUNT_NUMBER
+                            cmd.Parameters.AddWithValue("ID", _editingId);
+                            cmd.Parameters.AddWithValue("NAME", textBox5.Text.Trim());
+                            cmd.Parameters.AddWithValue("SURNAME", textBox6.Text.Trim());
+                            cmd.Parameters.AddWithValue("SECOND_NAME", textBox7.Text.Trim());
+                            cmd.Parameters.AddWithValue("ADDRESS", GetControlTextSafe(panel2, new[] { "textBoxAddress", "textBox8" }) ?? textBox8.Text.Trim());
+                            var phone = GetControlTextSafe(panel2, new[] { "textBoxPhone", "maskedTextBoxPhone", "textBox9" });
+                            cmd.Parameters.AddWithValue("PHONE", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                            var account = GetControlTextSafe(panel2, new[] { "textBoxAccount", "textBox10" });
+                            cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(account) ? DBNull.Value : (object)account);
+
+                            await cmd.ExecuteNonQueryAsync();
+
+                            MessageBox.Show(this, "Данные клиента успешно обновлены.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            _isEditMode = false;
+                            _editingId = -1;
+                            if (panel2 != null) panel2.Enabled = false;
+
+                            await LoadClientsWithCountsAsync();
+                            return;
+                        }
+                        else if (_editEntity == EditEntityType.Position)
+                        {
+                            cmd.CommandText = "UPDATE_POSITION";
+                            cmd.CommandType = CommandType.StoredProcedure;
+
+                            // Параметры UPDATE_POSITION: ID, NAME
+                            cmd.Parameters.AddWithValue("ID", _editingId);
+
+                            // имя позиции: берем из текстового поля panel2 (textBox5 или специально именованного)
+                            var posName = GetControlTextSafe(panel2, new[] { "textBoxPositionName", "textBox5" }).Trim();
+                            cmd.Parameters.AddWithValue("NAME", posName);
+
+                            await cmd.ExecuteNonQueryAsync();
+
+                            MessageBox.Show(this, "Должность успешно обновлена.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            _isEditMode = false;
+                            _editingId = -1;
+                            if (panel2 != null) panel2.Enabled = false;
+
+                            await LoadPositionsAsync();
+                            return;
+                        }
+                        else // Employee (по умолчанию)
+                        {
+                            cmd.CommandText = "UPDATE_EMPLOYEE";
+                            cmd.CommandType = CommandType.StoredProcedure;
+
+                            cmd.Parameters.AddWithValue("ID", _editingId);
+                            cmd.Parameters.AddWithValue("NAME", textBox5.Text.Trim());
+                            cmd.Parameters.AddWithValue("SURNAME", textBox6.Text.Trim());
+                            cmd.Parameters.AddWithValue("SECOND_NAME", textBox7.Text.Trim());
+                            cmd.Parameters.AddWithValue("HIRE_DATE", dateTimePicker3.Value.Date);
+                            cmd.Parameters.AddWithValue("SALARY", numericUpDown1.Value);
+                            cmd.Parameters.AddWithValue("EDUCATION", textBox8.Text.Trim());
+                            cmd.Parameters.AddWithValue("POSITION_ID", comboBox3?.SelectedValue ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("PHOTO", DBNull.Value);
+
+                            await cmd.ExecuteNonQueryAsync();
+
+                            MessageBox.Show(this, "Данные сотрудника успешно обновлены.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            _isEditMode = false;
+                            _editingId = -1;
+                            if (panel2 != null) panel2.Enabled = false;
+
+                            await LoadEmployeesAsync();
+                            return;
+                        }
+                    }
+                    catch (FbException fbEx)
+                    {
+                        MessageBox.Show(this, $"Ошибка БД при обновлении записи: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+
+                // Ниже — существующая логика добавления (ADD_EMPLOYEE). Оставлена без изменений.
+                var addConfirm = MessageBox.Show(this, "Вы уверены что хотите добавить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (addConfirm != DialogResult.Yes) return;
+
+                // Валидация при добавлении
                 if (string.IsNullOrEmpty(name))
                 {
                     MessageBox.Show(this, "Введите имя сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1207,63 +1419,67 @@ namespace SecurityAgencysApp
                     return;
                 }
 
-                // Вызов хранимой процедуры ADD_EMPLOYEE
-                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
-                await using var cmd = conn.CreateCommand();
-                cmd.CommandText = "ADD_EMPLOYEE";
-                cmd.CommandType = CommandType.StoredProcedure;
-
-                // Параметры. Фото пока отправляем NULL.
-                cmd.Parameters.AddWithValue("NAME", name);
-                cmd.Parameters.AddWithValue("SURNAME", surname);
-                cmd.Parameters.AddWithValue("SECOND_NAME", secondName);
-                cmd.Parameters.AddWithValue("HIRE_DATE", hireDate);
-                cmd.Parameters.AddWithValue("SALARY", salary);
-                cmd.Parameters.AddWithValue("EDUCATION", education);
-                cmd.Parameters.AddWithValue("POSITION_ID", positionId);
-                cmd.Parameters.AddWithValue("PHOTO", DBNull.Value);
-
-                int newId = -1;
-                await using var reader = await cmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync())
+                // Вызов ADD_EMPLOYEE
+                try
                 {
-                    if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
-                        newId = reader.GetInt32(reader.GetOrdinal("ID"));
-                }
+                    await using var conn2 = await FirebirdConnection.CreateOpenConnectionAsync();
+                    await using var cmd2 = conn2.CreateCommand();
+                    cmd2.CommandText = "ADD_EMPLOYEE";
+                    cmd2.CommandType = CommandType.StoredProcedure;
 
-                if (newId > 0)
+                    cmd2.Parameters.AddWithValue("NAME", name);
+                    cmd2.Parameters.AddWithValue("SURNAME", surname);
+                    cmd2.Parameters.AddWithValue("SECOND_NAME", secondName);
+                    cmd2.Parameters.AddWithValue("HIRE_DATE", hireDate);
+                    cmd2.Parameters.AddWithValue("SALARY", salary);
+                    cmd2.Parameters.AddWithValue("EDUCATION", education);
+                    cmd2.Parameters.AddWithValue("POSITION_ID", positionId);
+                    cmd2.Parameters.AddWithValue("PHOTO", DBNull.Value);
+
+                    int newId = -1;
+                    await using var reader = await cmd2.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
+                            newId = reader.GetInt32(reader.GetOrdinal("ID"));
+                    }
+
+                    if (newId > 0)
+                    {
+                        MessageBox.Show(this, $"Сотрудник успешно добавлен (ID: {newId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очистим поля ввода
+                        textBox5.Clear();
+                        textBox6.Clear();
+                        textBox7.Clear();
+                        numericUpDown1.Value = numericUpDown1.Minimum;
+                        textBox8.Clear();
+                        if (comboBox3 != null) comboBox3.SelectedIndex = -1;
+                        dateTimePicker3.Value = DateTime.Today;
+
+                        if (panel2 != null)
+                            panel2.Enabled = false;
+
+                        await LoadEmployeesAsync();
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "Сотрудник добавлен, но не удалось получить ID.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await LoadEmployeesAsync();
+                    }
+                }
+                catch (FbException fbEx2)
                 {
-                    MessageBox.Show(this, $"Сотрудник успешно добавлен (ID: {newId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    // Очистим поля ввода (по желанию)
-                    textBox5.Clear();
-                    textBox6.Clear();
-                    textBox7.Clear();
-                    numericUpDown1.Value = numericUpDown1.Minimum;
-                    textBox8.Clear();
-                    if (comboBox3 != null) comboBox3.SelectedIndex = -1;
-                    dateTimePicker3.Value = DateTime.Today;
-
-                    // Блокируем panel2 после успешного добавления
-                    if (panel2 != null)
-                        panel2.Enabled = false;
-
-                    // Обновляем грид сотрудников
-                    await LoadEmployeesAsync();
+                    MessageBox.Show(this, $"Ошибка БД при добавлении сотрудника: {fbEx2.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show(this, "Сотрудник добавлен, но не удалось получить ID.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    await LoadEmployeesAsync();
+                    MessageBox.Show(this, $"Ошибка при добавлении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-            }
-            catch (FbException fbEx)
-            {
-                MessageBox.Show(this, $"Ошибка БД при добавлении сотрудника: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Ошибка при добавлении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1342,6 +1558,50 @@ namespace SecurityAgencysApp
             var idx = dgv.Columns[columnName].Index;
             var val = row.Cells[idx].Value;
             return val?.ToString() ?? string.Empty;
+        }
+
+        // Вспомогательные методы — добавить в класс Form1
+        private static Control? FindControlRecursive(Control parent, string[] names)
+        {
+            if (parent == null) return null;
+            foreach (var name in names)
+            {
+                var found = parent.Controls.Find(name, true);
+                if (found != null && found.Length > 0)
+                    return found[0];
+            }
+            return null;
+        }
+
+        private static string GetControlTextSafe(Control parent, string[] names)
+        {
+            var ctrl = FindControlRecursive(parent, names);
+            if (ctrl == null) return string.Empty;
+            return ctrl is TextBox tb ? tb.Text :
+                   ctrl is ComboBox cb ? Convert.ToString(cb.SelectedItem) ?? string.Empty :
+                   ctrl is Label lb ? lb.Text :
+                   ctrl.Text ?? string.Empty;
+        }
+
+        private static void SetControlTextSafe(Control parent, string[] names, string text)
+        {
+            var ctrl = FindControlRecursive(parent, names);
+            if (ctrl == null) return;
+            switch (ctrl)
+            {
+                case TextBox tb:
+                    tb.Text = text;
+                    break;
+                case ComboBox cb:
+                    cb.Text = text;
+                    break;
+                case Label lb:
+                    lb.Text = text;
+                    break;
+                default:
+                    ctrl.Text = text;
+                    break;
+            }
         }
     }
 }
