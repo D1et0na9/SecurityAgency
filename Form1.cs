@@ -22,6 +22,7 @@ namespace SecurityAgencysApp
         private int _editingId = -1;
         // Текущее фото, загруженное через pictureBox1 (или взятое из грида)
         private byte[]? _currentPhoto;
+        private BindingSource _employeesBinding = new BindingSource();
 
         public Form1()
         {
@@ -103,6 +104,9 @@ namespace SecurityAgencysApp
                 table.Columns.Add("POSITION_NAME", typeof(string)).Caption = "Должность";
                 table.Columns.Add("PHOTO", typeof(byte[])); // хранит BLOB, но не показываем в гриде
 
+                // Колонка для быстрого поиска (нижний регистр). Скрытая в гриде.
+                table.Columns.Add("SEARCH", typeof(string));
+
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
                 await using var cmd = conn.CreateCommand();
                 cmd.CommandText = "GET_EMPLOYEES";
@@ -113,17 +117,32 @@ namespace SecurityAgencysApp
                 {
                     var row = table.NewRow();
 
+                    string name = string.Empty;
+                    string surname = string.Empty;
+                    string secondName = string.Empty;
+                    string positionName = string.Empty;
+                    string education = string.Empty;
+
                     if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
                         row["ID"] = reader.GetInt32(reader.GetOrdinal("ID"));
 
                     if (ColumnExists(reader, "NAME") && !reader.IsDBNull(reader.GetOrdinal("NAME")))
-                        row["NAME"] = reader.GetString(reader.GetOrdinal("NAME"));
+                    {
+                        name = reader.GetString(reader.GetOrdinal("NAME"));
+                        row["NAME"] = name;
+                    }
 
                     if (ColumnExists(reader, "SURNAME") && !reader.IsDBNull(reader.GetOrdinal("SURNAME")))
-                        row["SURNAME"] = reader.GetString(reader.GetOrdinal("SURNAME"));
+                    {
+                        surname = reader.GetString(reader.GetOrdinal("SURNAME"));
+                        row["SURNAME"] = surname;
+                    }
 
                     if (ColumnExists(reader, "SECOND_NAME") && !reader.IsDBNull(reader.GetOrdinal("SECOND_NAME")))
-                        row["SECOND_NAME"] = reader.GetString(reader.GetOrdinal("SECOND_NAME"));
+                    {
+                        secondName = reader.GetString(reader.GetOrdinal("SECOND_NAME"));
+                        row["SECOND_NAME"] = secondName;
+                    }
 
                     if (ColumnExists(reader, "HIRE_DATE") && !reader.IsDBNull(reader.GetOrdinal("HIRE_DATE")))
                         row["HIRE_DATE"] = reader.GetDateTime(reader.GetOrdinal("HIRE_DATE"));
@@ -132,10 +151,16 @@ namespace SecurityAgencysApp
                         row["SALARY"] = reader.GetDecimal(reader.GetOrdinal("SALARY"));
 
                     if (ColumnExists(reader, "EDUCATION") && !reader.IsDBNull(reader.GetOrdinal("EDUCATION")))
-                        row["EDUCATION"] = reader.GetString(reader.GetOrdinal("EDUCATION"));
+                    {
+                        education = reader.GetString(reader.GetOrdinal("EDUCATION"));
+                        row["EDUCATION"] = education;
+                    }
 
                     if (ColumnExists(reader, "POSITION_NAME") && !reader.IsDBNull(reader.GetOrdinal("POSITION_NAME")))
-                        row["POSITION_NAME"] = reader.GetString(reader.GetOrdinal("POSITION_NAME"));
+                    {
+                        positionName = reader.GetString(reader.GetOrdinal("POSITION_NAME"));
+                        row["POSITION_NAME"] = positionName;
+                    }
 
                     // Чтение PHOTO (BLOB) — сохраняем как byte[] в таблицу (не показываем в гриде)
                     if (ColumnExists(reader, "PHOTO") && !reader.IsDBNull(reader.GetOrdinal("PHOTO")))
@@ -161,10 +186,18 @@ namespace SecurityAgencysApp
                         row["PHOTO"] = DBNull.Value;
                     }
 
+                    // Заполним колонку SEARCH (нижний регистр) — используется для фильтрации
+                    var searchValue = string.Join(" ", new[] { surname, name, secondName, positionName, education }
+                                                    .Where(s => !string.IsNullOrEmpty(s)))
+                                      .ToLowerInvariant();
+                    row["SEARCH"] = searchValue;
+
                     table.Rows.Add(row);
                 }
 
-                dataGridView1.DataSource = table;
+                // Привязываем через BindingSource — это позволит удобно фильтровать
+                _employeesBinding.DataSource = table;
+                dataGridView1.DataSource = _employeesBinding;
 
                 foreach (DataGridViewColumn col in dataGridView1.Columns)
                 {
@@ -172,14 +205,18 @@ namespace SecurityAgencysApp
                     if (!string.IsNullOrEmpty(colName) && table.Columns.Contains(colName) && !string.IsNullOrEmpty(table.Columns[colName].Caption))
                         col.HeaderText = table.Columns[colName].Caption;
 
-                    // Скрываем служебные колонки ID и PHOTO
+                    // Скрываем служебные колонки ID, PHOTO и SEARCH
                     if (!string.IsNullOrEmpty(colName) &&
                         (string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(colName, "PHOTO", StringComparison.OrdinalIgnoreCase)))
+                         string.Equals(colName, "PHOTO", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase)))
                     {
                         col.Visible = false;
                     }
                 }
+
+                // Сброс фильтра поиска после загрузки
+                _employeesBinding.RemoveFilter();
             }
             catch (FbException fbEx)
             {
@@ -692,7 +729,7 @@ namespace SecurityAgencysApp
                             if (ColumnExists(rdr, "SERVICENAME") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICENAME")))
                                 servName = rdr.GetString(rdr.GetOrdinal("SERVICENAME"));
 
-                                    decimal lineTotal = 0;
+                                decimal lineTotal = 0;
                             if (ColumnExists(rdr, "TOTAL_LINE") && !rdr.IsDBNull(rdr.GetOrdinal("TOTAL_LINE")))
                                 lineTotal = rdr.GetDecimal(rdr.GetOrdinal("TOTAL_LINE"));
                             else if (ColumnExists(rdr, "SERVICE_AMOUNT") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICE_AMOUNT"))
@@ -1139,7 +1176,29 @@ namespace SecurityAgencysApp
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
+            try
+            {
+                if (_employeesBinding == null || _employeesBinding.DataSource == null)
+                    return;
 
+                var q = textBox1.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(q))
+                {
+                    _employeesBinding.RemoveFilter();
+                    return;
+                }
+
+                // Экранируем одиночные кавычки для DataView filter
+                q = q.Replace("'", "''");
+
+                // Фильтруем по колонке SEARCH (в которой уже нижний регистр)
+                _employeesBinding.Filter = $"SEARCH LIKE '%{q}%'";
+            }
+            catch
+            {
+                // Игнорируем ошибку фильтрации — без фатального поведения
+                _employeesBinding.RemoveFilter();
+            }
         }
 
         private async void button1_Click(object sender, EventArgs e)
