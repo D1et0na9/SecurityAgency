@@ -183,7 +183,6 @@
             button32 = new Button();
             button33 = new Button();
             button34 = new Button();
-            button38 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -1721,7 +1720,6 @@
             button30.TabIndex = 2;
             button30.Text = "Удалить услугу";
             button30.UseVisualStyleBackColor = true;
-            button30.Click += button30_Click;
             // 
             // button31
             // 
@@ -1731,7 +1729,6 @@
             button31.TabIndex = 1;
             button31.Text = "Редактировать услугу";
             button31.UseVisualStyleBackColor = true;
-            button31.Click += button31_Click;
             // 
             // button29
             // 
@@ -1741,7 +1738,6 @@
             button29.TabIndex = 0;
             button29.Text = "Добавить услугу";
             button29.UseVisualStyleBackColor = true;
-            button29.Click += button29_Click;
             // 
             // dataGridView7
             // 
@@ -1752,12 +1748,10 @@
             dataGridView7.RowHeadersWidth = 51;
             dataGridView7.Size = new Size(908, 658);
             dataGridView7.TabIndex = 10;
-            dataGridView7.CellContentClick += dataGridView7_CellContentClick;
             // 
             // panel24
             // 
             panel24.BackColor = Color.Gainsboro;
-            panel24.Controls.Add(button38);
             panel24.Controls.Add(textBox12);
             panel24.Controls.Add(button32);
             panel24.Controls.Add(button33);
@@ -1801,17 +1795,6 @@
             button34.TabIndex = 5;
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
-            button34.Click += button34_Click;
-            // 
-            // button38
-            // 
-            button38.Location = new Point(4, 36);
-            button38.Name = "button38";
-            button38.Size = new Size(319, 29);
-            button38.TabIndex = 6;
-            button38.Text = "Сохранить в CSV";
-            button38.UseVisualStyleBackColor = true;
-            button38.Click += button38_Click;
             // 
             // Form1
             // 
@@ -2053,6 +2036,5 @@
         private RichTextBox richTextBox6;
         private Panel panel25;
         private Button button37;
-        private Button button38;
     }
 }
