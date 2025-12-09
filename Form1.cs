@@ -22,7 +22,13 @@ namespace SecurityAgencysApp
         private int _editingId = -1;
         // Текущее фото, загруженное через pictureBox1 (или взятое из грида)
         private byte[]? _currentPhoto;
-        private BindingSource _employeesBinding = new BindingSource();
+
+        // Добавлены BindingSource поля в класс Form1 (в секции полей класса)
+        private BindingSource _employeesBinding = new();
+        private BindingSource _clientsBinding = new();
+        private BindingSource _objectsBinding = new();
+        private BindingSource _callsBinding = new();
+        private BindingSource _servicesBinding = new();
 
         public Form1()
         {
@@ -297,6 +303,9 @@ namespace SecurityAgencysApp
                 clientsTable.Columns.Add("ACCOUNT_NUMBER", typeof(string)).Caption = "Л/сч";
                 clientsTable.Columns.Add("IS_ACTIVE", typeof(bool)).Caption = "Активен";
 
+                // Колонка для быстрого поиска
+                clientsTable.Columns.Add("SEARCH", typeof(string));
+
                 // Через процедуры получим сначала клиентов, затем заказы и объекты — посчитаем по clientId
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
 
@@ -312,6 +321,8 @@ namespace SecurityAgencysApp
                     {
                         var row = clientsTable.NewRow();
 
+                        string name = string.Empty, surname = string.Empty, second = string.Empty, address = string.Empty, phone = string.Empty, account = string.Empty;
+
                         if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
                         {
                             var id = reader.GetInt32(reader.GetOrdinal("ID"));
@@ -320,44 +331,62 @@ namespace SecurityAgencysApp
                         }
 
                         if (ColumnExists(reader, "NAME") && !reader.IsDBNull(reader.GetOrdinal("NAME")))
-                            row["NAME"] = reader.GetString(reader.GetOrdinal("NAME"));
+                        {
+                            name = reader.GetString(reader.GetOrdinal("NAME"));
+                            row["NAME"] = name;
+                        }
 
                         if (ColumnExists(reader, "SURNAME") && !reader.IsDBNull(reader.GetOrdinal("SURNAME")))
-                            row["SURNAME"] = reader.GetString(reader.GetOrdinal("SURNAME"));
+                        {
+                            surname = reader.GetString(reader.GetOrdinal("SURNAME"));
+                            row["SURNAME"] = surname;
+                        }
 
                         if (ColumnExists(reader, "SECOND_NAME") && !reader.IsDBNull(reader.GetOrdinal("SECOND_NAME")))
-                            row["SECOND_NAME"] = reader.GetString(reader.GetOrdinal("SECOND_NAME"));
+                        {
+                            second = reader.GetString(reader.GetOrdinal("SECOND_NAME"));
+                            row["SECOND_NAME"] = second;
+                        }
 
                         if (ColumnExists(reader, "ADDRESS") && !reader.IsDBNull(reader.GetOrdinal("ADDRESS")))
-                            row["ADDRESS"] = reader.GetString(reader.GetOrdinal("ADDRESS"));
+                        {
+                            address = reader.GetString(reader.GetOrdinal("ADDRESS"));
+                            row["ADDRESS"] = address;
+                        }
 
                         if (ColumnExists(reader, "PHONE") && !reader.IsDBNull(reader.GetOrdinal("PHONE")))
-                            row["PHONE"] = reader.GetString(reader.GetOrdinal("PHONE"));
+                        {
+                            phone = reader.GetString(reader.GetOrdinal("PHONE"));
+                            row["PHONE"] = phone;
+                        }
 
                         if (ColumnExists(reader, "ACCOUNT_NUMBER") && !reader.IsDBNull(reader.GetOrdinal("ACCOUNT_NUMBER")))
-                            row["ACCOUNT_NUMBER"] = reader.GetString(reader.GetOrdinal("ACCOUNT_NUMBER"));
+                        {
+                            account = reader.GetString(reader.GetOrdinal("ACCOUNT_NUMBER"));
+                            row["ACCOUNT_NUMBER"] = account;
+                        }
 
                         if (ColumnExists(reader, "IS_ACTIVE") && !reader.IsDBNull(reader.GetOrdinal("IS_ACTIVE")))
                             row["IS_ACTIVE"] = reader.GetBoolean(reader.GetOrdinal("IS_ACTIVE"));
+
+                        // SEARCH = объединение ключевых полей в нижнем регистре
+                        row["SEARCH"] = string.Join(" ", new[] { name, surname, second, address, phone, account }.Where(s => !string.IsNullOrEmpty(s))).ToLowerInvariant();
 
                         clientsTable.Rows.Add(row);
                     }
                 }
 
-                // Подготовим словари для подсчётов
+                // Остальная логика подсчётов заказов/объектов остаётся прежней (GET_ORDERS, GET_GUARDEDOBJECTS)
                 var ordersCountByClient = new Dictionary<int, int>();
                 var objectsCountByClient = new Dictionary<int, int>();
-                // И отображение orderId -> clientId (чтобы сопоставить guardedobjects -> client)
                 var orderToClient = new Dictionary<int, int>();
 
-                // Инициализация нулевых значений для всех клиентов
                 foreach (var id in clientIds)
                 {
                     ordersCountByClient[id] = 0;
                     objectsCountByClient[id] = 0;
                 }
 
-                // 2) GET_ORDERS — соберём mapping orderId -> clientId и посчитаем заказы на клиента
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_ORDERS";
@@ -386,7 +415,6 @@ namespace SecurityAgencysApp
                     }
                 }
 
-                // 3) GET_GUARDEDOBJECTS — используем ORDER_ID чтобы узнать клиент и посчитать объекты
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDEDOBJECTS";
@@ -397,8 +425,8 @@ namespace SecurityAgencysApp
                     {
                         int? orderId = null;
 
-                        if (ColumnExists(reader, "ORDER_ID") && !reader.IsDBNull(reader.GetOrdinal("ORDER_ID")))
-                            orderId = reader.GetInt32(reader.GetOrdinal("ORDER_ID"));
+                        if (ColumnExists(reader, "ORDER_ID") && !reader.IsDBNull(reader.GetOrdinal("ORDER_ID"))) ;
+                        orderId = reader.GetInt32(reader.GetOrdinal("ORDER_ID"));
 
                         if (orderId.HasValue && orderToClient.TryGetValue(orderId.Value, out var clientId))
                         {
@@ -407,28 +435,25 @@ namespace SecurityAgencysApp
                             else
                                 objectsCountByClient[clientId] = 1;
                         }
-                        // Если orderId не найден в mapping — объект "без заказа" либо данные не сопоставимы; пропускаем
                     }
                 }
 
-                // Добавляем итоговые колонки (не показываем ID)
                 clientsTable.Columns.Add("OBJECT_COUNT", typeof(int)).Caption = "Объектов";
                 clientsTable.Columns.Add("ORDER_COUNT", typeof(int)).Caption = "Заказов";
 
-                // Заполняем значения OBJECT_COUNT и ORDER_COUNT по clientId
                 foreach (DataRow row in clientsTable.Rows)
                 {
                     if (row["ID"] == DBNull.Value) continue;
-
                     var clientId = (int)row["ID"];
                     row["OBJECT_COUNT"] = objectsCountByClient.TryGetValue(clientId, out var oCnt) ? oCnt : 0;
                     row["ORDER_COUNT"] = ordersCountByClient.TryGetValue(clientId, out var ordCnt) ? ordCnt : 0;
                 }
 
-                // Привязка к гриду
-                dataGridView2.DataSource = clientsTable;
+                // Привязка через BindingSource
+                _clientsBinding.DataSource = clientsTable;
+                dataGridView2.DataSource = _clientsBinding;
 
-                // Настройка отображения: скрыть столбец ID, установить заголовки
+                // Скрываем служебные колонки и назначаем заголовки
                 foreach (DataGridViewColumn col in dataGridView2.Columns)
                 {
                     var colName = col?.Name;
@@ -446,7 +471,12 @@ namespace SecurityAgencysApp
                         col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         col.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
                     }
+
+                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase))
+                        col.Visible = false;
                 }
+
+                _clientsBinding.RemoveFilter();
             }
             catch (FbException fbEx)
             {
@@ -463,13 +493,12 @@ namespace SecurityAgencysApp
         /// - поля CLIENT_FIO (из GET_GUARDEDOBJECTS)
         /// -aggregированную информацию по GUARDCALLS: количество вызовов и данные последнего вызова
         /// Результат отображается в одном DataGridView — dataGridView3. ID не показывается.
-        /// Все поля — только для чтения.
+        /// Все поля — только для редактирования.
         /// </summary>
         private async Task LoadGuardedObjectsCombinedAsync()
         {
             try
             {
-                // Настройки грида
                 dataGridView3.ReadOnly = true;
                 dataGridView3.AllowUserToAddRows = false;
                 dataGridView3.AllowUserToDeleteRows = false;
@@ -481,25 +510,23 @@ namespace SecurityAgencysApp
 
                 var table = new DataTable();
 
-                // Включаем скрытый ID (для внутренней корректной работы), но не показываем его пользователю
-                table.Columns.Add("ID", typeof(int)); // ID guarded object (скрыт)
-                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа"; // можно показать при необходимости
+                table.Columns.Add("ID", typeof(int));
+                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа";
                 table.Columns.Add("CLIENT_FIO", typeof(string)).Caption = "Клиент";
                 table.Columns.Add("OBJECT_ADDRESS", typeof(string)).Caption = "Адрес объекта";
                 table.Columns.Add("DESCRIPTION", typeof(string)).Caption = "Описание";
-
-                // Колонки с информацией по вызовам (агрегаты / последний вызов)
                 table.Columns.Add("CALL_COUNT", typeof(int)).Caption = "Вызовов";
                 table.Columns.Add("LAST_CALL_DATETIME", typeof(DateTime)).Caption = "Последний вызов";
                 table.Columns.Add("LAST_CALL_EMPLOYEE", typeof(string)).Caption = "Сотрудник";
                 table.Columns.Add("LAST_CALL_RESULT", typeof(string)).Caption = "Результат";
 
-                // Словари для агрегации вызовов: ключ — адрес объекта
+                // Колонка поиска
+                table.Columns.Add("SEARCH", typeof(string));
+
                 var callsByAddress = new Dictionary<string, List<(DateTime dt, string emp, string result)>>(StringComparer.OrdinalIgnoreCase);
 
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
 
-                // 1) Получаем все вызовы и группируем по OBJECT_ADDRESS
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDCALLS";
@@ -539,7 +566,6 @@ namespace SecurityAgencysApp
                     }
                 }
 
-                // 2) Получаем guarded objects и формируем строки
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDEDOBJECTS";
@@ -550,6 +576,10 @@ namespace SecurityAgencysApp
                     {
                         var row = table.NewRow();
 
+                        string? addr = null;
+                        string clientFio = string.Empty;
+                        string desc = string.Empty;
+
                         if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
                             row["ID"] = reader.GetInt32(reader.GetOrdinal("ID"));
 
@@ -557,9 +587,11 @@ namespace SecurityAgencysApp
                             row["ORDER_ID"] = reader.GetInt32(reader.GetOrdinal("ORDER_ID"));
 
                         if (ColumnExists(reader, "CLIENT_FIO") && !reader.IsDBNull(reader.GetOrdinal("CLIENT_FIO")))
-                            row["CLIENT_FIO"] = reader.GetString(reader.GetOrdinal("CLIENT_FIO"));
+                        {
+                            clientFio = reader.GetString(reader.GetOrdinal("CLIENT_FIO"));
+                            row["CLIENT_FIO"] = clientFio;
+                        }
 
-                        string? addr = null;
                         if (ColumnExists(reader, "OBJECT_ADDRESS") && !reader.IsDBNull(reader.GetOrdinal("OBJECT_ADDRESS")))
                         {
                             addr = reader.GetString(reader.GetOrdinal("OBJECT_ADDRESS"));
@@ -567,34 +599,40 @@ namespace SecurityAgencysApp
                         }
 
                         if (ColumnExists(reader, "DESCRIPTION") && !reader.IsDBNull(reader.GetOrdinal("DESCRIPTION")))
-                            row["DESCRIPTION"] = reader.GetString(reader.GetOrdinal("DESCRIPTION"));
+                        {
+                            desc = reader.GetString(reader.GetOrdinal("DESCRIPTION"));
+                            row["DESCRIPTION"] = desc;
+                        }
 
-                        // По умолчанию 0 и null-значения
                         row["CALL_COUNT"] = 0;
                         row["LAST_CALL_EMPLOYEE"] = string.Empty;
                         row["LAST_CALL_RESULT"] = string.Empty;
                         row["LAST_CALL_DATETIME"] = DBNull.Value;
 
-                        // Если по адресу есть вызовы — агрегируем
                         if (!string.IsNullOrEmpty(addr) && callsByAddress.TryGetValue(addr, out var calls) && calls.Count > 0)
                         {
                             row["CALL_COUNT"] = calls.Count;
-
-                            // Найдём последний по дате
                             var last = calls.OrderByDescending(x => x.dt).First();
                             row["LAST_CALL_DATETIME"] = last.dt;
                             row["LAST_CALL_EMPLOYEE"] = last.emp;
                             row["LAST_CALL_RESULT"] = last.result;
                         }
 
+                        // SEARCH: клиент, адрес, описание, последнее рез-ть и сотрудник
+                        row["SEARCH"] = string.Join(" ", new[] {
+                    clientFio, addr ?? string.Empty, desc,
+                    row["LAST_CALL_EMPLOYEE"]?.ToString() ?? string.Empty,
+                    row["LAST_CALL_RESULT"]?.ToString() ?? string.Empty
+                }.Where(s => !string.IsNullOrEmpty(s))).ToLowerInvariant();
+
                         table.Rows.Add(row);
                     }
                 }
 
-                // Привязка к гриду
-                dataGridView3.DataSource = table;
+                // Привязка через BindingSource
+                _objectsBinding.DataSource = table;
+                dataGridView3.DataSource = _objectsBinding;
 
-                // Настройка отображения: скрыть столбец ID и настроить заголовки
                 foreach (DataGridViewColumn col in dataGridView3.Columns)
                 {
                     var colName = col?.Name;
@@ -603,17 +641,21 @@ namespace SecurityAgencysApp
 
                     if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase))
                         col.Visible = false;
+
+                    if (!string.IsNullOrEmpty(colName) && string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase))
+                        col.Visible = false;
                 }
 
-                // Немного настроим отображение столбцов с датой/числом для удобства
                 if (dataGridView3.Columns.Contains("LAST_CALL_DATETIME"))
-                    dataGridView3.Columns["LAST_CALL_DATETIME"].DefaultCellStyle.Format = "g"; // краткий формат
+                    dataGridView3.Columns["LAST_CALL_DATETIME"].DefaultCellStyle.Format = "g";
 
                 if (dataGridView3.Columns.Contains("CALL_COUNT"))
                 {
                     dataGridView3.Columns["CALL_COUNT"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                     dataGridView3.Columns["CALL_COUNT"].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
                 }
+
+                _objectsBinding.RemoveFilter();
             }
             catch (FbException fbEx)
             {
@@ -648,22 +690,21 @@ namespace SecurityAgencysApp
 
                 var table = new DataTable();
 
-                // Основные поля вызова
-                table.Columns.Add("CALL_ID", typeof(int)); // внутренний, скрываем
+                table.Columns.Add("CALL_ID", typeof(int));
                 table.Columns.Add("OBJECT_ADDRESS", typeof(string)).Caption = "Адрес объекта";
                 table.Columns.Add("EMPLOYEE_FIO", typeof(string)).Caption = "Сотрудник";
                 table.Columns.Add("CALL_DATETIME", typeof(DateTime)).Caption = "Дата/время вызова";
                 table.Columns.Add("RESULT", typeof(string)).Caption = "Результат";
-
-                // Поля из связанных таблиц/деталей заказа
-                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа"; // скрываем
+                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа";
                 table.Columns.Add("ORDER_DATE", typeof(DateTime)).Caption = "Дата оказания";
                 table.Columns.Add("ORDER_TOTAL", typeof(decimal)).Caption = "Итоговая сумма";
                 table.Columns.Add("SERVICE_NAMES", typeof(string)).Caption = "Услуги";
 
+                // Поисковая колонка
+                table.Columns.Add("SEARCH", typeof(string));
+
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
 
-                // 1) Получим mapping OBJECT_ADDRESS -> ORDER_ID (через GET_GUARDEDOBJECTS)
                 var addrToOrder = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 await using (var cmd = conn.CreateCommand())
                 {
@@ -683,7 +724,6 @@ namespace SecurityAgencysApp
                     }
                 }
 
-                // 2) Получим информацию по ORDERS: ORDER_ID -> (ORDER_DATE, TOTAL_REVENUE)
                 var orderInfo = new Dictionary<int, (DateTime? orderDate, decimal total)>();
                 await using (var cmd = conn.CreateCommand())
                 {
@@ -708,11 +748,11 @@ namespace SecurityAgencysApp
                             orderInfo[id] = (orderDate, total);
                         }
                     }
-                };
+                }
+                ;
 
-                // 3) Получим детали заказов (GET_ORDER_DETAILS) и агрегируем названия услуг и итог по заказу
                 var servicesByOrder = new Dictionary<int, List<string>>();
-                var totalByOrder = new Dictionary<int, decimal>(); // если нужно, можно пересчитать
+                var totalByOrder = new Dictionary<int, decimal>();
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_ORDER_DETAILS";
@@ -729,7 +769,7 @@ namespace SecurityAgencysApp
                             if (ColumnExists(rdr, "SERVICENAME") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICENAME")))
                                 servName = rdr.GetString(rdr.GetOrdinal("SERVICENAME"));
 
-                                decimal lineTotal = 0;
+                            decimal lineTotal = 0;
                             if (ColumnExists(rdr, "TOTAL_LINE") && !rdr.IsDBNull(rdr.GetOrdinal("TOTAL_LINE")))
                                 lineTotal = rdr.GetDecimal(rdr.GetOrdinal("TOTAL_LINE"));
                             else if (ColumnExists(rdr, "SERVICE_AMOUNT") && !rdr.IsDBNull(rdr.GetOrdinal("SERVICE_AMOUNT"))
@@ -751,9 +791,9 @@ namespace SecurityAgencysApp
                                 totalByOrder[orderId] = lineTotal;
                         }
                     }
-                };
+                }
+                ;
 
-                // 4) Получаем вызовы (GET_GUARDCALLS) и собираем итоговую строку
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDCALLS";
@@ -783,7 +823,6 @@ namespace SecurityAgencysApp
                         if (ColumnExists(rdr, "RESULT") && !rdr.IsDBNull(rdr.GetOrdinal("RESULT")))
                             row["RESULT"] = rdr.GetString(rdr.GetOrdinal("RESULT"));
 
-                        // По адресу ищем ORDER_ID -> затем доп.инфу
                         if (!string.IsNullOrEmpty(addr) && addrToOrder.TryGetValue(addr, out var orderId))
                         {
                             row["ORDER_ID"] = orderId;
@@ -795,7 +834,6 @@ namespace SecurityAgencysApp
                                 row["ORDER_TOTAL"] = info.total;
                             }
 
-                            // Если в GET_ORDER_DETAILS собрали totalByOrder — используем его как более точный итог
                             if (totalByOrder.TryGetValue(orderId, out var recalculated))
                                 row["ORDER_TOTAL"] = recalculated;
 
@@ -816,14 +854,21 @@ namespace SecurityAgencysApp
                             row["SERVICE_NAMES"] = string.Empty;
                         }
 
+                        // SEARCH: адрес, сотрудник, результат, услуги
+                        row["SEARCH"] = string.Join(" ", new[] {
+                    addr ?? string.Empty,
+                    row["EMPLOYEE_FIO"]?.ToString() ?? string.Empty,
+                    row["RESULT"]?.ToString() ?? string.Empty,
+                    row["SERVICE_NAMES"]?.ToString() ?? string.Empty
+                }.Where(s => !string.IsNullOrEmpty(s))).ToLowerInvariant();
+
                         table.Rows.Add(row);
                     }
                 }
 
-                // Привязка к гриду
-                dataGridView4.DataSource = table;
+                _callsBinding.DataSource = table;
+                dataGridView4.DataSource = _callsBinding;
 
-                // Настройка отображения и скрытие ID-полей
                 foreach (DataGridViewColumn col in dataGridView4.Columns)
                 {
                     if (table.Columns.Contains(col.Name) && !string.IsNullOrEmpty(table.Columns[col.Name].Caption))
@@ -834,9 +879,11 @@ namespace SecurityAgencysApp
                     {
                         col.Visible = false;
                     }
+
+                    if (string.Equals(col.Name, "SEARCH", StringComparison.OrdinalIgnoreCase))
+                        col.Visible = false;
                 }
 
-                // Форматирование колонок
                 if (dataGridView4.Columns.Contains("CALL_DATETIME"))
                     dataGridView4.Columns["CALL_DATETIME"].DefaultCellStyle.Format = "g";
 
@@ -872,8 +919,6 @@ namespace SecurityAgencysApp
         {
             try
             {
-                // Если элемент dataGridView7 ещё не добавлен в Designer — добавьте его.
-                // Настройки грида аналогичны другим методам в классе
                 dataGridView7.ReadOnly = true;
                 dataGridView7.AllowUserToAddRows = false;
                 dataGridView7.AllowUserToDeleteRows = false;
@@ -888,8 +933,6 @@ namespace SecurityAgencysApp
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
                 await using var cmd = conn.CreateCommand();
 
-                // Попробуем сначала вызвать хранимую процедуру GET_SERVICETYPES (если она есть),
-                // иначе выполняем прямой SELECT из таблицы SERVICETYPES.
                 try
                 {
                     cmd.CommandText = "GET_SERVICETYPES";
@@ -900,7 +943,6 @@ namespace SecurityAgencysApp
                 }
                 catch (FbException)
                 {
-                    // Если SP отсутствует или вызов не удался — используем SELECT
                     cmd.Parameters.Clear();
                     cmd.CommandText = "SELECT * FROM \"SERVICETYPES\"";
                     cmd.CommandType = System.Data.CommandType.Text;
@@ -909,14 +951,27 @@ namespace SecurityAgencysApp
                     table.Load(rdr);
                 }
 
-                // Уберём колонку ID из отображения, если она есть
+                // Добавим колонку SEARCH (если ее нет)
+                if (!table.Columns.Contains("SEARCH"))
+                    table.Columns.Add("SEARCH", typeof(string));
+
+                // Заполним SEARCH для каждой строки
+                foreach (DataRow r in table.Rows)
+                {
+                    var parts = new List<string>();
+                    if (table.Columns.Contains("SERVICENAME") && r["SERVICENAME"] != DBNull.Value)
+                        parts.Add(r["SERVICENAME"].ToString()!);
+                    if (table.Columns.Contains("UNIT_COST") && r["UNIT_COST"] != DBNull.Value)
+                        parts.Add(r["UNIT_COST"].ToString()!);
+                    r["SEARCH"] = string.Join(" ", parts).ToLowerInvariant();
+                }
+
                 if (table.Columns.Contains("ID"))
                     table.Columns.Remove("ID");
 
-                // Привязка к гриду
-                dataGridView7.DataSource = table;
+                _servicesBinding.DataSource = table;
+                dataGridView7.DataSource = _servicesBinding;
 
-                // Проставим читаемые заголовки (часто встречающиеся имена)
                 var hdr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["SERVICENAME"] = "Название",
@@ -938,7 +993,12 @@ namespace SecurityAgencysApp
                         if (!string.IsNullOrEmpty(n))
                             col.HeaderText = char.ToUpperInvariant(n[0]) + (n.Length > 1 ? n.Substring(1).ToLowerInvariant() : string.Empty);
                     }
+
+                    if (string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase))
+                        col.Visible = false;
                 }
+
+                _servicesBinding.RemoveFilter();
             }
             catch (FbException fbEx)
             {
@@ -1020,16 +1080,16 @@ namespace SecurityAgencysApp
         {
             // Решаем, какая сетка содержит выбранную строку: clients (dataGridView2) имеет приоритет над employees (dataGridView1)
             DataGridViewRow? row = null;
-            if (dataGridView2 != null && dataGridView2.CurrentRow != null)
-            {
-                _editEntity = EditEntityType.Client;
-                row = dataGridView2.CurrentRow;
-            }
-            else if (dataGridView1 != null && dataGridView1.CurrentRow != null)
+            if (dataGridView1 != null && dataGridView1.CurrentRow != null)
             {
                 _editEntity = EditEntityType.Employee;
                 row = dataGridView1.CurrentRow;
             }
+            //else if (dataGridView1 != null && dataGridView1.CurrentRow != null)
+            //{
+            //    _editEntity = EditEntityType.Employee;
+            //    row = dataGridView1.CurrentRow;
+            //}
             else
             {
                 MessageBox.Show(this, "Выберите строку в списке (Клиенты или Сотрудники).", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1178,8 +1238,7 @@ namespace SecurityAgencysApp
         {
             try
             {
-                if (_employeesBinding == null || _employeesBinding.DataSource == null)
-                    return;
+                if (_employeesBinding == null || _employeesBinding.DataSource == null) return;
 
                 var q = textBox1.Text.Trim().ToLowerInvariant();
                 if (string.IsNullOrEmpty(q))
@@ -1187,17 +1246,96 @@ namespace SecurityAgencysApp
                     _employeesBinding.RemoveFilter();
                     return;
                 }
-
-                // Экранируем одиночные кавычки для DataView filter
                 q = q.Replace("'", "''");
-
-                // Фильтруем по колонке SEARCH (в которой уже нижний регистр)
                 _employeesBinding.Filter = $"SEARCH LIKE '%{q}%'";
             }
             catch
             {
-                // Игнорируем ошибку фильтрации — без фатального поведения
                 _employeesBinding.RemoveFilter();
+            }
+        }
+
+        private void textBox2_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_clientsBinding == null || _clientsBinding.DataSource == null) return;
+
+                var q = textBox2.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(q))
+                {
+                    _clientsBinding.RemoveFilter();
+                    return;
+                }
+                q = q.Replace("'", "''");
+                _clientsBinding.Filter = $"SEARCH LIKE '%{q}%'";
+            }
+            catch
+            {
+                _clientsBinding.RemoveFilter();
+            }
+        }
+
+        private void textBox3_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_objectsBinding == null || _objectsBinding.DataSource == null) return;
+
+                var q = textBox3.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(q))
+                {
+                    _objectsBinding.RemoveFilter();
+                    return;
+                }
+                q = q.Replace("'", "''");
+                _objectsBinding.Filter = $"SEARCH LIKE '%{q}%'";
+            }
+            catch
+            {
+                _objectsBinding.RemoveFilter();
+            }
+        }
+
+        private void textBox4_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_callsBinding == null || _callsBinding.DataSource == null) return;
+
+                var q = textBox4.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(q))
+                {
+                    _callsBinding.RemoveFilter();
+                    return;
+                }
+                q = q.Replace("'", "''");
+                _callsBinding.Filter = $"SEARCH LIKE '%{q}%'";
+            }
+            catch
+            {
+                _callsBinding.RemoveFilter();
+            }
+        }
+
+        private void textBox12_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_servicesBinding == null || _servicesBinding.DataSource == null) return;
+
+                var q = textBox12.Text.Trim().ToLowerInvariant();
+                if (string.IsNullOrEmpty(q))
+                {
+                    _servicesBinding.RemoveFilter();
+                    return;
+                }
+                q = q.Replace("'", "''");
+                _servicesBinding.Filter = $"SEARCH LIKE '%{q}%'";
+            }
+            catch
+            {
+                _servicesBinding.RemoveFilter();
             }
         }
 
@@ -1265,10 +1403,10 @@ namespace SecurityAgencysApp
 
         }
 
-        private void textBox2_TextChanged(object sender, EventArgs e)
-        {
+        //private void textBox2_TextChanged(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void button4_Click(object sender, EventArgs e)
         {
@@ -1295,10 +1433,10 @@ namespace SecurityAgencysApp
 
         }
 
-        private void textBox3_TextChanged(object sender, EventArgs e)
-        {
+        //private void textBox3_TextChanged(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void button8_Click(object sender, EventArgs e)
         {
@@ -1340,10 +1478,10 @@ namespace SecurityAgencysApp
 
         }
 
-        private void textBox4_TextChanged(object sender, EventArgs e)
-        {
+        //private void textBox4_TextChanged(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void button11_Click(object sender, EventArgs e)
         {
@@ -1845,5 +1983,10 @@ namespace SecurityAgencysApp
                 MessageBox.Show(this, $"Ошибка при удалении сотрудника: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        //private void textBox12_TextChanged_1(object sender, EventArgs e)
+        //{
+
+        //}
     }
 }

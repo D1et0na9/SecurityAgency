@@ -144,6 +144,7 @@
             button1 = new Button();
             button2 = new Button();
             panel6 = new Panel();
+            button37 = new Button();
             richTextBox1 = new RichTextBox();
             button25 = new Button();
             button24 = new Button();
@@ -187,7 +188,6 @@
             checkBox5 = new CheckBox();
             button33 = new Button();
             button34 = new Button();
-            button37 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -1437,6 +1437,15 @@
             panel6.Size = new Size(255, 255);
             panel6.TabIndex = 2;
             // 
+            // button37
+            // 
+            button37.Location = new Point(3, 223);
+            button37.Name = "button37";
+            button37.Size = new Size(249, 29);
+            button37.TabIndex = 5;
+            button37.Text = "Удалить сотрудника";
+            button37.UseVisualStyleBackColor = true;
+            // 
             // richTextBox1
             // 
             richTextBox1.Font = new Font("Segoe UI", 19.8000011F, FontStyle.Regular, GraphicsUnit.Point, 204);
@@ -1813,6 +1822,7 @@
             textBox12.PlaceholderText = "Поиск";
             textBox12.Size = new Size(319, 27);
             textBox12.TabIndex = 2;
+            textBox12.TextChanged += textBox12_TextChanged;
             // 
             // button32
             // 
@@ -1850,15 +1860,6 @@
             button34.TabIndex = 5;
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
-            // 
-            // button37
-            // 
-            button37.Location = new Point(3, 223);
-            button37.Name = "button37";
-            button37.Size = new Size(249, 29);
-            button37.TabIndex = 5;
-            button37.Text = "Удалить сотрудника";
-            button37.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
