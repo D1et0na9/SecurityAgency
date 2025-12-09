@@ -183,6 +183,12 @@
             button32 = new Button();
             button33 = new Button();
             button34 = new Button();
+            button38 = new Button();
+            button39 = new Button();
+            button40 = new Button();
+            button41 = new Button();
+            button42 = new Button();
+            button43 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -727,6 +733,7 @@
             // panel23
             // 
             panel23.BackColor = Color.Gainsboro;
+            panel23.Controls.Add(button41);
             panel23.Controls.Add(textBox4);
             panel23.Controls.Add(button11);
             panel23.Controls.Add(button12);
@@ -808,6 +815,7 @@
             // panel21
             // 
             panel21.BackColor = Color.Gainsboro;
+            panel21.Controls.Add(button40);
             panel21.Controls.Add(button10);
             panel21.Controls.Add(textBox3);
             panel21.Controls.Add(button8);
@@ -1063,6 +1071,7 @@
             // panel19
             // 
             panel19.BackColor = Color.Gainsboro;
+            panel19.Controls.Add(button39);
             panel19.Controls.Add(textBox2);
             panel19.Controls.Add(button7);
             panel19.Controls.Add(button4);
@@ -1323,6 +1332,7 @@
             // panel18
             // 
             panel18.BackColor = Color.Gainsboro;
+            panel18.Controls.Add(button38);
             panel18.Controls.Add(textBox1);
             panel18.Controls.Add(button5);
             panel18.Controls.Add(button1);
@@ -1752,6 +1762,8 @@
             // panel24
             // 
             panel24.BackColor = Color.Gainsboro;
+            panel24.Controls.Add(button43);
+            panel24.Controls.Add(button42);
             panel24.Controls.Add(textBox12);
             panel24.Controls.Add(button32);
             panel24.Controls.Add(button33);
@@ -1795,6 +1807,67 @@
             button34.TabIndex = 5;
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
+            button34.Click += button34_Click;
+            // 
+            // button38
+            // 
+            button38.Location = new Point(4, 71);
+            button38.Name = "button38";
+            button38.Size = new Size(184, 29);
+            button38.TabIndex = 6;
+            button38.Text = "Сменить УЗ";
+            button38.UseVisualStyleBackColor = true;
+            button38.Click += button38_Click;
+            // 
+            // button39
+            // 
+            button39.Location = new Point(5, 140);
+            button39.Name = "button39";
+            button39.Size = new Size(312, 29);
+            button39.TabIndex = 7;
+            button39.Text = "Сменить УЗ";
+            button39.UseVisualStyleBackColor = true;
+            button39.Click += button39_Click;
+            // 
+            // button40
+            // 
+            button40.Location = new Point(3, 107);
+            button40.Name = "button40";
+            button40.Size = new Size(188, 29);
+            button40.TabIndex = 7;
+            button40.Text = "Сменить УЗ";
+            button40.UseVisualStyleBackColor = true;
+            button40.Click += button40_Click;
+            // 
+            // button41
+            // 
+            button41.Location = new Point(709, 71);
+            button41.Name = "button41";
+            button41.Size = new Size(185, 56);
+            button41.TabIndex = 7;
+            button41.Text = "Сменить УЗ";
+            button41.UseVisualStyleBackColor = true;
+            button41.Click += button41_Click;
+            // 
+            // button42
+            // 
+            button42.Location = new Point(4, 141);
+            button42.Name = "button42";
+            button42.Size = new Size(319, 29);
+            button42.TabIndex = 7;
+            button42.Text = "Сменить УЗ";
+            button42.UseVisualStyleBackColor = true;
+            button42.Click += button42_Click;
+            // 
+            // button43
+            // 
+            button43.Location = new Point(4, 36);
+            button43.Name = "button43";
+            button43.Size = new Size(319, 29);
+            button43.TabIndex = 8;
+            button43.Text = "Сохранить в CSV";
+            button43.UseVisualStyleBackColor = true;
+            button43.Click += button43_Click;
             // 
             // Form1
             // 
@@ -2036,5 +2109,11 @@
         private RichTextBox richTextBox6;
         private Panel panel25;
         private Button button37;
+        private Button button38;
+        private Button button41;
+        private Button button40;
+        private Button button39;
+        private Button button43;
+        private Button button42;
     }
 }

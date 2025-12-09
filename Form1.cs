@@ -1353,12 +1353,40 @@ namespace SecurityAgencysApp
 
         private void button5_Click(object sender, EventArgs e)
         {
+            try
+            {
+                if (dataGridView1 == null || dataGridView1.Columns.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет колонок для выбора.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-        }
+                // Собираем колонки, у которых есть Name (используем Name как уникальный ключ)
+                var cols = new List<DataGridViewColumn>();
+                foreach (DataGridViewColumn c in dataGridView1.Columns)
+                {
+                    // включаем в список все колонки, у которых задано имя (имена в вашем коде присутствуют для всех полезных колонок)
+                    if (!string.IsNullOrEmpty(c.Name))
+                        cols.Add(c);
+                }
 
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
-        {
+                using var dlg = new ColumnSelectorForm(cols);
+                var res = dlg.ShowDialog(this);
+                if (res != DialogResult.OK) return;
 
+                var selected = new HashSet<string>(dlg.SelectedColumnNames, StringComparer.OrdinalIgnoreCase);
+
+                // Применяем — видимыми остаются только выбранные колонки (по Name)
+                foreach (DataGridViewColumn c in dataGridView1.Columns)
+                {
+                    if (string.IsNullOrEmpty(c.Name)) continue;
+                    c.Visible = selected.Contains(c.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при выборе колонок: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // Кнопка "Обновить" на вкладке Объекты (designer: button9) — перезагружает dataGridView3
@@ -1988,6 +2016,41 @@ namespace SecurityAgencysApp
         private async void button33_Click(object sender, EventArgs e)
         {
             await LoadServiceTypesAsync();
+        }
+
+        private void button38_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button39_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button40_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button41_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button43_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button34_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button42_Click(object sender, EventArgs e)
+        {
+
         }
 
         //private void textBox12_TextChanged_1(object sender, EventArgs e)
