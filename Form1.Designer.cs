@@ -79,14 +79,12 @@
             panel23 = new Panel();
             textBox4 = new TextBox();
             button11 = new Button();
-            checkBox4 = new CheckBox();
             button12 = new Button();
             button13 = new Button();
             tabPage3 = new TabPage();
             splitContainer3 = new SplitContainer();
             panel21 = new Panel();
             button10 = new Button();
-            checkBox3 = new CheckBox();
             textBox3 = new TextBox();
             button8 = new Button();
             button9 = new Button();
@@ -111,7 +109,6 @@
             splitContainer2 = new SplitContainer();
             panel20 = new Panel();
             panel19 = new Panel();
-            checkBox2 = new CheckBox();
             textBox2 = new TextBox();
             button7 = new Button();
             button4 = new Button();
@@ -138,7 +135,6 @@
             tabPage1 = new TabPage();
             splitContainer1 = new SplitContainer();
             panel18 = new Panel();
-            checkBox1 = new CheckBox();
             textBox1 = new TextBox();
             button5 = new Button();
             button1 = new Button();
@@ -185,9 +181,9 @@
             panel24 = new Panel();
             textBox12 = new TextBox();
             button32 = new Button();
-            checkBox5 = new CheckBox();
             button33 = new Button();
             button34 = new Button();
+            button38 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -734,7 +730,6 @@
             panel23.BackColor = Color.Gainsboro;
             panel23.Controls.Add(textBox4);
             panel23.Controls.Add(button11);
-            panel23.Controls.Add(checkBox4);
             panel23.Controls.Add(button12);
             panel23.Controls.Add(button13);
             panel23.Location = new Point(3, 531);
@@ -760,17 +755,6 @@
             button11.Text = "Сохранить в CSV";
             button11.UseVisualStyleBackColor = true;
             button11.Click += button11_Click;
-            // 
-            // checkBox4
-            // 
-            checkBox4.AutoSize = true;
-            checkBox4.Location = new Point(709, 71);
-            checkBox4.Name = "checkBox4";
-            checkBox4.Size = new Size(185, 24);
-            checkBox4.TabIndex = 6;
-            checkBox4.Text = "Экспорт изменённого";
-            checkBox4.UseVisualStyleBackColor = true;
-            checkBox4.CheckedChanged += checkBox4_CheckedChanged;
             // 
             // button12
             // 
@@ -826,7 +810,6 @@
             // 
             panel21.BackColor = Color.Gainsboro;
             panel21.Controls.Add(button10);
-            panel21.Controls.Add(checkBox3);
             panel21.Controls.Add(textBox3);
             panel21.Controls.Add(button8);
             panel21.Controls.Add(button9);
@@ -844,17 +827,6 @@
             button10.Text = "Сортировать";
             button10.UseVisualStyleBackColor = true;
             button10.Click += button10_Click;
-            // 
-            // checkBox3
-            // 
-            checkBox3.AutoSize = true;
-            checkBox3.Location = new Point(131, 110);
-            checkBox3.Name = "checkBox3";
-            checkBox3.Size = new Size(185, 24);
-            checkBox3.TabIndex = 6;
-            checkBox3.Text = "Экспорт изменённого";
-            checkBox3.UseVisualStyleBackColor = true;
-            checkBox3.CheckedChanged += checkBox3_CheckedChanged;
             // 
             // textBox3
             // 
@@ -877,7 +849,7 @@
             // 
             // button9
             // 
-            button9.Location = new Point(4, 107);
+            button9.Location = new Point(197, 107);
             button9.Name = "button9";
             button9.Size = new Size(119, 29);
             button9.TabIndex = 4;
@@ -1092,7 +1064,6 @@
             // panel19
             // 
             panel19.BackColor = Color.Gainsboro;
-            panel19.Controls.Add(checkBox2);
             panel19.Controls.Add(textBox2);
             panel19.Controls.Add(button7);
             panel19.Controls.Add(button4);
@@ -1101,17 +1072,6 @@
             panel19.Name = "panel19";
             panel19.Size = new Size(320, 172);
             panel19.TabIndex = 2;
-            // 
-            // checkBox2
-            // 
-            checkBox2.AutoSize = true;
-            checkBox2.Location = new Point(67, 141);
-            checkBox2.Name = "checkBox2";
-            checkBox2.Size = new Size(185, 24);
-            checkBox2.TabIndex = 6;
-            checkBox2.Text = "Экспорт изменённого";
-            checkBox2.UseVisualStyleBackColor = true;
-            checkBox2.CheckedChanged += checkBox2_CheckedChanged;
             // 
             // textBox2
             // 
@@ -1364,7 +1324,6 @@
             // panel18
             // 
             panel18.BackColor = Color.Gainsboro;
-            panel18.Controls.Add(checkBox1);
             panel18.Controls.Add(textBox1);
             panel18.Controls.Add(button5);
             panel18.Controls.Add(button1);
@@ -1373,17 +1332,6 @@
             panel18.Name = "panel18";
             panel18.Size = new Size(519, 103);
             panel18.TabIndex = 3;
-            // 
-            // checkBox1
-            // 
-            checkBox1.AutoSize = true;
-            checkBox1.Location = new Point(331, 71);
-            checkBox1.Name = "checkBox1";
-            checkBox1.Size = new Size(185, 24);
-            checkBox1.TabIndex = 6;
-            checkBox1.Text = "Экспорт изменённого";
-            checkBox1.UseVisualStyleBackColor = true;
-            checkBox1.CheckedChanged += checkBox1_CheckedChanged;
             // 
             // textBox1
             // 
@@ -1396,7 +1344,7 @@
             // 
             // button5
             // 
-            button5.Location = new Point(113, 68);
+            button5.Location = new Point(303, 71);
             button5.Name = "button5";
             button5.Size = new Size(213, 29);
             button5.TabIndex = 5;
@@ -1416,7 +1364,7 @@
             // 
             // button2
             // 
-            button2.Location = new Point(4, 68);
+            button2.Location = new Point(194, 71);
             button2.Name = "button2";
             button2.Size = new Size(103, 29);
             button2.TabIndex = 4;
@@ -1773,6 +1721,7 @@
             button30.TabIndex = 2;
             button30.Text = "Удалить услугу";
             button30.UseVisualStyleBackColor = true;
+            button30.Click += button30_Click;
             // 
             // button31
             // 
@@ -1782,6 +1731,7 @@
             button31.TabIndex = 1;
             button31.Text = "Редактировать услугу";
             button31.UseVisualStyleBackColor = true;
+            button31.Click += button31_Click;
             // 
             // button29
             // 
@@ -1791,6 +1741,7 @@
             button29.TabIndex = 0;
             button29.Text = "Добавить услугу";
             button29.UseVisualStyleBackColor = true;
+            button29.Click += button29_Click;
             // 
             // dataGridView7
             // 
@@ -1801,13 +1752,14 @@
             dataGridView7.RowHeadersWidth = 51;
             dataGridView7.Size = new Size(908, 658);
             dataGridView7.TabIndex = 10;
+            dataGridView7.CellContentClick += dataGridView7_CellContentClick;
             // 
             // panel24
             // 
             panel24.BackColor = Color.Gainsboro;
+            panel24.Controls.Add(button38);
             panel24.Controls.Add(textBox12);
             panel24.Controls.Add(button32);
-            panel24.Controls.Add(checkBox5);
             panel24.Controls.Add(button33);
             panel24.Controls.Add(button34);
             panel24.Location = new Point(5, 343);
@@ -1826,22 +1778,10 @@
             // 
             // button32
             // 
-            button32.Location = new Point(4, 36);
+            button32.Location = new Point(0, 0);
             button32.Name = "button32";
-            button32.Size = new Size(319, 29);
+            button32.Size = new Size(75, 23);
             button32.TabIndex = 3;
-            button32.Text = "Сохранить в CSV";
-            button32.UseVisualStyleBackColor = true;
-            // 
-            // checkBox5
-            // 
-            checkBox5.AutoSize = true;
-            checkBox5.Location = new Point(64, 141);
-            checkBox5.Name = "checkBox5";
-            checkBox5.Size = new Size(185, 24);
-            checkBox5.TabIndex = 6;
-            checkBox5.Text = "Экспорт изменённого";
-            checkBox5.UseVisualStyleBackColor = true;
             // 
             // button33
             // 
@@ -1851,6 +1791,7 @@
             button33.TabIndex = 4;
             button33.Text = "Обновить";
             button33.UseVisualStyleBackColor = true;
+            button33.Click += button33_Click;
             // 
             // button34
             // 
@@ -1860,6 +1801,17 @@
             button34.TabIndex = 5;
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
+            button34.Click += button34_Click;
+            // 
+            // button38
+            // 
+            button38.Location = new Point(4, 36);
+            button38.Name = "button38";
+            button38.Size = new Size(319, 29);
+            button38.TabIndex = 6;
+            button38.Text = "Сохранить в CSV";
+            button38.UseVisualStyleBackColor = true;
+            button38.Click += button38_Click;
             // 
             // Form1
             // 
@@ -1991,12 +1943,8 @@
         private Panel panel4;
         private PictureBox pictureBox2;
         private Panel panel6;
-        private CheckBox checkBox2;
-        private CheckBox checkBox1;
-        private CheckBox checkBox4;
         private Panel panel8;
         private Panel panel7;
-        private CheckBox checkBox3;
         private Label label9;
         private Label label8;
         private Label label7;
@@ -2095,7 +2043,6 @@
         private Panel panel24;
         private TextBox textBox12;
         private Button button32;
-        private CheckBox checkBox5;
         private Button button33;
         private Button button34;
         private Panel panel17;
@@ -2106,5 +2053,6 @@
         private RichTextBox richTextBox6;
         private Panel panel25;
         private Button button37;
+        private Button button38;
     }
 }
