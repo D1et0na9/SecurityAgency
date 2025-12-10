@@ -30,6 +30,9 @@ namespace SecurityAgencysApp
         private BindingSource _callsBinding = new();
         private BindingSource _servicesBinding = new();
 
+        // Флаг чтобы избежать повторных одновременных обновлений при быстром переключении вкладок
+        private bool _isTabRefreshInProgress = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -51,6 +54,10 @@ namespace SecurityAgencysApp
 
             // Подписываемся на DoubleClick для загрузки фото (активируется, когда panel2 и pictureBox1 включены)
             pictureBox1.DoubleClick += pictureBox1_DoubleClick;
+
+            // Подписка на переключение вкладок — при переходе будем обновлять гриды вкладки назначения
+            if (tabControl1 != null)
+                tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
         }
 
         private async void Form1_Load(object? sender, EventArgs e)
@@ -75,6 +82,64 @@ namespace SecurityAgencysApp
             // По умолчанию делаем panel8 недоступной для ввода (если нужно)
             if (panel2 != null)
                 panel2.Enabled = false;
+        }
+
+        /// <summary>
+        /// Обработчик переключения вкладок: при переходе на вкладку запускает её функцию обновления (если она есть).
+        /// Защищает от повторного одновременного выполнения.
+        /// </summary>
+        private async void tabControl1_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_isTabRefreshInProgress) return;
+            if (tabControl1 == null) return;
+
+            try
+            {
+                _isTabRefreshInProgress = true;
+
+                var selected = tabControl1.SelectedTab;
+                if (selected == null) return;
+
+                // Сопоставления: вкладка -> функция обновления
+                if (selected == tabPage1)
+                {
+                    // Сотрудники
+                    await LoadEmployeesAsync();
+                }
+                else if (selected == tabPage2)
+                {
+                    // Клиенты
+                    await LoadClientsWithCountsAsync();
+                }
+                else if (selected == tabPage3)
+                {
+                    // Объекты
+                    await LoadGuardedObjectsCombinedAsync();
+                }
+                else if (selected == tabPage4)
+                {
+                    // Вызовы
+                    await LoadGuardCallsCombinedAsync();
+                }
+                else if (selected == tabPage6)
+                {
+                    // Услуги
+                    await LoadServiceTypesAsync();
+                }
+                else
+                {
+                    // Для прочих вкладок (например, Отчёты tabPage5) специфического загрузчика нет — ничего не делаем.
+                }
+            }
+            catch (Exception ex)
+            {
+                // Безопасно показываем ошибку, чтобы не ломать переключение вкладок
+                MessageBox.Show(this, $"Ошибка при обновлении вкладки: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isTabRefreshInProgress = false;
+            }
         }
 
         /// <summary>
