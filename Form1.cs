@@ -1403,7 +1403,26 @@ namespace SecurityAgencysApp
 
         private void button7_Click(object sender, EventArgs e)
         {
+            // Клиенты -> dataGridView2
+            ShowColumnSelectorForGrid(dataGridView2);
+        }
 
+        private void button10_Click(object sender, EventArgs e)
+        {
+            // Объекты -> dataGridView3
+            ShowColumnSelectorForGrid(dataGridView3);
+        }
+
+        private void button13_Click(object sender, EventArgs e)
+        {
+            // Вызовы -> dataGridView4
+            ShowColumnSelectorForGrid(dataGridView4);
+        }
+
+        private void button34_Click(object sender, EventArgs e)
+        {
+            // Услуги -> dataGridView7
+            ShowColumnSelectorForGrid(dataGridView7);
         }
 
         private void checkBox2_CheckedChanged(object sender, EventArgs e)
@@ -1471,10 +1490,10 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button10_Click(object sender, EventArgs e)
-        {
+        //private void button10_Click(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void checkBox3_CheckedChanged(object sender, EventArgs e)
         {
@@ -1522,10 +1541,10 @@ namespace SecurityAgencysApp
             // Кнопка "Обновить" на вкладке Вызовы (designer: button12) — перезагружает dataGridView4
         }
 
-        private void button13_Click(object sender, EventArgs e)
-        {
+        //private void button13_Click(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void checkBox4_CheckedChanged(object sender, EventArgs e)
         {
@@ -2043,11 +2062,53 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button34_Click(object sender, EventArgs e)
+        //private void button34_Click(object sender, EventArgs e)
+        //{
+
+        //}
+
+        private void ShowColumnSelectorForGrid(DataGridView dgv)
         {
+            if (dgv == null)
+            {
+                MessageBox.Show(this, "Таблица не найдена.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
+            if (dgv.Columns == null || dgv.Columns.Count == 0)
+            {
+                MessageBox.Show(this, "В таблице нет колонок для выбора.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                var cols = new List<DataGridViewColumn>();
+                foreach (DataGridViewColumn c in dgv.Columns)
+                {
+                    if (!string.IsNullOrEmpty(c.Name))
+                        cols.Add(c);
+                }
+
+                using var dlg = new ColumnSelectorForm(cols);
+                var res = dlg.ShowDialog(this);
+                if (res != DialogResult.OK) return;
+
+                var selected = new HashSet<string>(dlg.SelectedColumnNames, StringComparer.OrdinalIgnoreCase);
+
+                // Сделаем видимыми только выбранные колонки (по Name).
+                // Сохраним порядок и остальные свойства.
+                foreach (DataGridViewColumn c in dgv.Columns)
+                {
+                    if (string.IsNullOrEmpty(c.Name)) continue;
+                    c.Visible = selected.Contains(c.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при выборе колонок: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-
         private void button42_Click(object sender, EventArgs e)
         {
 
