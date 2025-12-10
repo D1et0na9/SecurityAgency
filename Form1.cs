@@ -1701,9 +1701,66 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button16_Click(object sender, EventArgs e)
+        private async void button16_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим выбранную строку в dataGridView4
+                if (dataGridView4.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите вызов в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Получаем ID вызова из скрытой колонки CALL_ID
+                var idStr = GetRowCellString(dataGridView4.CurrentRow, "CALL_ID");
+                if (!int.TryParse(idStr, out var callId) || callId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного вызова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Получим информацию о вызове для подтверждения
+                var objectAddress = GetRowCellString(dataGridView4.CurrentRow, "OBJECT_ADDRESS");
+                var employeeFio = GetRowCellString(dataGridView4.CurrentRow, "EMPLOYEE_FIO");
+                var callDateTime = GetRowCellString(dataGridView4.CurrentRow, "CALL_DATETIME");
+
+                var displayInfo = string.IsNullOrEmpty(objectAddress)
+                    ? employeeFio
+                    : string.IsNullOrEmpty(employeeFio)
+                        ? objectAddress
+                        : $"{objectAddress} ({employeeFio})";
+
+                // Подтверждение удаления
+                var message = string.IsNullOrEmpty(displayInfo)
+                    ? "Вы уверены что хотите удалить данный вызов?"
+                    : $"Вы уверены что хотите удалить вызов на адрес '{displayInfo}'?";
+
+                var dr = MessageBox.Show(this, message, "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов процедуры DELETE_GUARDCALL
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE_GUARDCALL";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("CALL_ID", callId);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                MessageBox.Show(this, "Вызов успешно удалён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Обновим грид вызовов
+                await LoadGuardCallsCombinedAsync();
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при удалении вызова: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при удалении вызова: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void dataGridView4_CellContentClick(object sender, DataGridViewCellEventArgs e)
