@@ -556,9 +556,9 @@ namespace SecurityAgencysApp
         /// <summary>
         /// Загрузить GUARDEDOBJECTS и "приклеить" к каждому:
         /// - поля CLIENT_FIO (из GET_GUARDEDOBJECTS)
-        /// -aggregированную информацию по GUARDCALLS: количество вызовов и данные последнего вызова
+        /// - aggregированную информацию по GUARDCALLS: количество вызовов и дата последнего вызова
         /// Результат отображается в одном DataGridView — dataGridView3. ID не показывается.
-        /// Все поля — только для редактирования.
+        /// Убраны колонки "Номер заказа", "Сотрудник" и "Результат" — запрашиваются только необходимые данные.
         /// </summary>
         private async Task LoadGuardedObjectsCombinedAsync()
         {
@@ -576,22 +576,22 @@ namespace SecurityAgencysApp
                 var table = new DataTable();
 
                 table.Columns.Add("ID", typeof(int));
-                table.Columns.Add("ORDER_ID", typeof(int)).Caption = "Номер заказа";
                 table.Columns.Add("CLIENT_FIO", typeof(string)).Caption = "Клиент";
                 table.Columns.Add("OBJECT_ADDRESS", typeof(string)).Caption = "Адрес объекта";
                 table.Columns.Add("DESCRIPTION", typeof(string)).Caption = "Описание";
                 table.Columns.Add("CALL_COUNT", typeof(int)).Caption = "Вызовов";
                 table.Columns.Add("LAST_CALL_DATETIME", typeof(DateTime)).Caption = "Последний вызов";
-                table.Columns.Add("LAST_CALL_EMPLOYEE", typeof(string)).Caption = "Сотрудник";
-                table.Columns.Add("LAST_CALL_RESULT", typeof(string)).Caption = "Результат";
+                // Убраны: ORDER_ID, LAST_CALL_EMPLOYEE, LAST_CALL_RESULT
 
                 // Колонка поиска
                 table.Columns.Add("SEARCH", typeof(string));
 
-                var callsByAddress = new Dictionary<string, List<(DateTime dt, string emp, string result)>>(StringComparer.OrdinalIgnoreCase);
+                // Сохраняем только даты вызовов для каждого адреса
+                var callsByAddress = new Dictionary<string, List<DateTime>>(StringComparer.OrdinalIgnoreCase);
 
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
 
+                // Читаем только те поля из GET_GUARDCALLS, которые нам нужны: OBJECT_ADDRESS и CALL_DATETIME
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDCALLS";
@@ -602,8 +602,6 @@ namespace SecurityAgencysApp
                     {
                         string? addr = null;
                         DateTime? dt = null;
-                        string emp = string.Empty;
-                        string res = string.Empty;
 
                         if (ColumnExists(reader, "OBJECT_ADDRESS") && !reader.IsDBNull(reader.GetOrdinal("OBJECT_ADDRESS")))
                             addr = reader.GetString(reader.GetOrdinal("OBJECT_ADDRESS"));
@@ -611,26 +609,20 @@ namespace SecurityAgencysApp
                         if (ColumnExists(reader, "CALL_DATETIME") && !reader.IsDBNull(reader.GetOrdinal("CALL_DATETIME")))
                             dt = reader.GetDateTime(reader.GetOrdinal("CALL_DATETIME"));
 
-                        if (ColumnExists(reader, "EMPLOYEE_FIO") && !reader.IsDBNull(reader.GetOrdinal("EMPLOYEE_FIO")))
-                            emp = reader.GetString(reader.GetOrdinal("EMPLOYEE_FIO"));
-
-                        if (ColumnExists(reader, "RESULT") && !reader.IsDBNull(reader.GetOrdinal("RESULT")))
-                            res = reader.GetString(reader.GetOrdinal("RESULT"));
-
-                        if (!string.IsNullOrEmpty(addr))
+                        if (!string.IsNullOrEmpty(addr) && dt.HasValue)
                         {
                             if (!callsByAddress.TryGetValue(addr, out var list))
                             {
-                                list = new List<(DateTime, string, string)>();
+                                list = new List<DateTime>();
                                 callsByAddress[addr] = list;
                             }
 
-                            if (dt.HasValue)
-                                list.Add((dt.Value, emp, res));
+                            list.Add(dt.Value);
                         }
                     }
                 }
 
+                // Получаем охраняемые объекты и приклеиваем агрегацию вызовов
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDEDOBJECTS";
@@ -647,9 +639,6 @@ namespace SecurityAgencysApp
 
                         if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
                             row["ID"] = reader.GetInt32(reader.GetOrdinal("ID"));
-
-                        if (ColumnExists(reader, "ORDER_ID") && !reader.IsDBNull(reader.GetOrdinal("ORDER_ID")))
-                            row["ORDER_ID"] = reader.GetInt32(reader.GetOrdinal("ORDER_ID"));
 
                         if (ColumnExists(reader, "CLIENT_FIO") && !reader.IsDBNull(reader.GetOrdinal("CLIENT_FIO")))
                         {
@@ -670,25 +659,26 @@ namespace SecurityAgencysApp
                         }
 
                         row["CALL_COUNT"] = 0;
-                        row["LAST_CALL_EMPLOYEE"] = string.Empty;
-                        row["LAST_CALL_RESULT"] = string.Empty;
                         row["LAST_CALL_DATETIME"] = DBNull.Value;
 
                         if (!string.IsNullOrEmpty(addr) && callsByAddress.TryGetValue(addr, out var calls) && calls.Count > 0)
                         {
                             row["CALL_COUNT"] = calls.Count;
-                            var last = calls.OrderByDescending(x => x.dt).First();
-                            row["LAST_CALL_DATETIME"] = last.dt;
-                            row["LAST_CALL_EMPLOYEE"] = last.emp;
-                            row["LAST_CALL_RESULT"] = last.result;
+                            var last = calls.OrderByDescending(x => x).First();
+                            row["LAST_CALL_DATETIME"] = last;
                         }
 
-                        // SEARCH: клиент, адрес, описание, последнее рез-ть и сотрудник
-                        row["SEARCH"] = string.Join(" ", new[] {
-                    clientFio, addr ?? string.Empty, desc,
-                    row["LAST_CALL_EMPLOYEE"]?.ToString() ?? string.Empty,
-                    row["LAST_CALL_RESULT"]?.ToString() ?? string.Empty
-                }.Where(s => !string.IsNullOrEmpty(s))).ToLowerInvariant();
+                        // SEARCH: клиент, адрес, описание, дата последнего вызова
+                        var searchParts = new List<string> {
+                            clientFio,
+                            addr ?? string.Empty,
+                            desc
+                        };
+
+                        if (row["LAST_CALL_DATETIME"] != DBNull.Value && row["LAST_CALL_DATETIME"] is DateTime dtLast)
+                            searchParts.Add(dtLast.ToString("g"));
+
+                        row["SEARCH"] = string.Join(" ", searchParts.Where(s => !string.IsNullOrEmpty(s))).ToLowerInvariant();
 
                         table.Rows.Add(row);
                     }
