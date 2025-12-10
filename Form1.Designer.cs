@@ -1775,6 +1775,7 @@
             button30.TabIndex = 2;
             button30.Text = "Удалить услугу";
             button30.UseVisualStyleBackColor = true;
+            button30.Click += button30_Click;
             // 
             // button31
             // 

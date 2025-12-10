@@ -1002,6 +1002,9 @@ namespace SecurityAgencysApp
 
                 var table = new DataTable();
 
+                // Добавляем скрытую колонку ID
+                table.Columns.Add("ID", typeof(int));
+
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
                 await using var cmd = conn.CreateCommand();
 
@@ -1038,9 +1041,6 @@ namespace SecurityAgencysApp
                     r["SEARCH"] = string.Join(" ", parts).ToLowerInvariant();
                 }
 
-                if (table.Columns.Contains("ID"))
-                    table.Columns.Remove("ID");
-
                 _servicesBinding.DataSource = table;
                 dataGridView7.DataSource = _servicesBinding;
 
@@ -1055,6 +1055,14 @@ namespace SecurityAgencysApp
                     var colName = col?.Name;
                     if (string.IsNullOrEmpty(colName)) continue;
 
+                    // Скрываем служебные колонки ID и SEARCH
+                    if (string.Equals(colName, "ID", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase))
+                    {
+                        col.Visible = false;
+                        continue;
+                    }
+
                     if (hdr.TryGetValue(colName, out var caption))
                     {
                         col.HeaderText = caption;
@@ -1065,9 +1073,6 @@ namespace SecurityAgencysApp
                         if (!string.IsNullOrEmpty(n))
                             col.HeaderText = char.ToUpperInvariant(n[0]) + (n.Length > 1 ? n.Substring(1).ToLowerInvariant() : string.Empty);
                     }
-
-                    if (string.Equals(colName, "SEARCH", StringComparison.OrdinalIgnoreCase))
-                        col.Visible = false;
                 }
 
                 _servicesBinding.RemoveFilter();
@@ -1512,9 +1517,62 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button22_Click(object sender, EventArgs e)
+        private async void button22_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим выбранную строку в dataGridView2
+                if (dataGridView2.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите клиента в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Получаем ID из скрытой колонки
+                var idStr = GetRowCellString(dataGridView2.CurrentRow, "ID");
+                if (!int.TryParse(idStr, out var clientId) || clientId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Получим ФИО клиента для подтверждения
+                var clientName = GetRowCellString(dataGridView2.CurrentRow, "SURNAME");
+                var clientFirstName = GetRowCellString(dataGridView2.CurrentRow, "NAME");
+                var clientFullName = string.IsNullOrEmpty(clientFirstName)
+                    ? clientName
+                    : $"{clientName} {clientFirstName}".Trim();
+
+                // Подтверждение удаления
+                var message = string.IsNullOrEmpty(clientFullName)
+                    ? "Вы уверены что хотите удалить данную запись?"
+                    : $"Вы уверены что хотите удалить клиента '{clientFullName}'?";
+
+                var dr = MessageBox.Show(this, message, "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов процедуры DELETE_CLIENT
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE_CLIENT";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("CLIENT_ID", clientId);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                MessageBox.Show(this, "Клиент успешно удалён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Обновим грид клиентов
+                await LoadClientsWithCountsAsync();
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при удалении клиента: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при удалении клиента: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void dataGridView2_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -1542,9 +1600,65 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button19_Click(object sender, EventArgs e)
+        private async void button19_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим выбранную строку в dataGridView3
+                if (dataGridView3.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите объект в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Получаем ID из скрытой колонки
+                var idStr = GetRowCellString(dataGridView3.CurrentRow, "ID");
+                if (!int.TryParse(idStr, out var objectId) || objectId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного объекта.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Получим информацию об объекте для подтверждения
+                var clientFio = GetRowCellString(dataGridView3.CurrentRow, "CLIENT_FIO");
+                var objectAddress = GetRowCellString(dataGridView3.CurrentRow, "OBJECT_ADDRESS");
+                var displayInfo = string.IsNullOrEmpty(objectAddress)
+                    ? clientFio
+                    : string.IsNullOrEmpty(clientFio)
+                        ? objectAddress
+                        : $"{clientFio} - {objectAddress}";
+
+                // Подтверждение удаления
+                var message = string.IsNullOrEmpty(displayInfo)
+                    ? "Вы уверены что хотите удалить данный объект?"
+                    : $"Вы уверены что хотите удалить объект '{displayInfo}'?\n\nБудут удалены также все связанные вызовы.";
+
+                var dr = MessageBox.Show(this, message, "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов процедуры DELETE_GUARDEDOBJECT
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE_GUARDEDOBJECT";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("OBJECT_ID", objectId);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                MessageBox.Show(this, "Объект успешно удалён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Обновим гриды объектов и вызовов
+                await LoadGuardedObjectsCombinedAsync();
+                await LoadGuardCallsCombinedAsync();
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при удалении объекта: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при удалении объекта: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void dataGridView3_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -2443,6 +2557,54 @@ namespace SecurityAgencysApp
             catch (Exception ex)
             {
                 MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void button30_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Проверим выбранную строку в dataGridView7
+                if (dataGridView7.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите тип услуги в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Получаем ID из скрытой колонки
+                var idStr = GetRowCellString(dataGridView7.CurrentRow, "ID");
+                if (!int.TryParse(idStr, out var serviceTypeId) || serviceTypeId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного типа услуги.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Подтверждение удаления
+                var dr = MessageBox.Show(this, "Вы уверены что хотите удалить данную запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов процедуры DELETE_SERVICETYPE
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE_SERVICETYPE";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("SERVICETYPE_ID", serviceTypeId);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                MessageBox.Show(this, "Тип услуги успешно удалён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Обновим грид услуг
+                await LoadServiceTypesAsync();
+            }
+            catch (FbException fbEx)
+            {
+                // Отобразим сообщение от СУБД (например, исключение EX_DELETE_PROTECTED)
+                MessageBox.Show(this, $"Ошибка БД при удалении услуги: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при удалении услуги: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         //private void textBox12_TextChanged_1(object sender, EventArgs e)
