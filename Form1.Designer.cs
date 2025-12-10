@@ -77,6 +77,7 @@
             pictureBox2 = new PictureBox();
             dataGridView4 = new DataGridView();
             panel23 = new Panel();
+            button41 = new Button();
             textBox4 = new TextBox();
             button11 = new Button();
             button12 = new Button();
@@ -84,6 +85,7 @@
             tabPage3 = new TabPage();
             splitContainer3 = new SplitContainer();
             panel21 = new Panel();
+            button40 = new Button();
             button10 = new Button();
             textBox3 = new TextBox();
             button8 = new Button();
@@ -109,6 +111,7 @@
             splitContainer2 = new SplitContainer();
             panel20 = new Panel();
             panel19 = new Panel();
+            button39 = new Button();
             textBox2 = new TextBox();
             button7 = new Button();
             button4 = new Button();
@@ -135,6 +138,7 @@
             tabPage1 = new TabPage();
             splitContainer1 = new SplitContainer();
             panel18 = new Panel();
+            button38 = new Button();
             textBox1 = new TextBox();
             button5 = new Button();
             button1 = new Button();
@@ -179,16 +183,12 @@
             button29 = new Button();
             dataGridView7 = new DataGridView();
             panel24 = new Panel();
+            button43 = new Button();
+            button42 = new Button();
             textBox12 = new TextBox();
             button32 = new Button();
             button33 = new Button();
             button34 = new Button();
-            button38 = new Button();
-            button39 = new Button();
-            button40 = new Button();
-            button41 = new Button();
-            button42 = new Button();
-            button43 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -743,6 +743,16 @@
             panel23.Size = new Size(897, 130);
             panel23.TabIndex = 7;
             // 
+            // button41
+            // 
+            button41.Location = new Point(709, 71);
+            button41.Name = "button41";
+            button41.Size = new Size(185, 56);
+            button41.TabIndex = 7;
+            button41.Text = "Сменить УЗ";
+            button41.UseVisualStyleBackColor = true;
+            button41.Click += button41_Click;
+            // 
             // textBox4
             // 
             textBox4.Location = new Point(3, 3);
@@ -824,6 +834,16 @@
             panel21.Name = "panel21";
             panel21.Size = new Size(320, 139);
             panel21.TabIndex = 2;
+            // 
+            // button40
+            // 
+            button40.Location = new Point(3, 107);
+            button40.Name = "button40";
+            button40.Size = new Size(188, 29);
+            button40.TabIndex = 7;
+            button40.Text = "Сменить УЗ";
+            button40.UseVisualStyleBackColor = true;
+            button40.Click += button40_Click;
             // 
             // button10
             // 
@@ -1080,6 +1100,16 @@
             panel19.Name = "panel19";
             panel19.Size = new Size(320, 172);
             panel19.TabIndex = 2;
+            // 
+            // button39
+            // 
+            button39.Location = new Point(5, 140);
+            button39.Name = "button39";
+            button39.Size = new Size(312, 29);
+            button39.TabIndex = 7;
+            button39.Text = "Сменить УЗ";
+            button39.UseVisualStyleBackColor = true;
+            button39.Click += button39_Click;
             // 
             // textBox2
             // 
@@ -1341,6 +1371,16 @@
             panel18.Name = "panel18";
             panel18.Size = new Size(519, 103);
             panel18.TabIndex = 3;
+            // 
+            // button38
+            // 
+            button38.Location = new Point(4, 71);
+            button38.Name = "button38";
+            button38.Size = new Size(184, 29);
+            button38.TabIndex = 6;
+            button38.Text = "Сменить УЗ";
+            button38.UseVisualStyleBackColor = true;
+            button38.Click += button38_Click;
             // 
             // textBox1
             // 
@@ -1677,6 +1717,7 @@
             button36.TabIndex = 4;
             button36.Text = "Сохранить";
             button36.UseVisualStyleBackColor = true;
+            button36.Click += button36_Click_1;
             // 
             // label2
             // 
@@ -1689,10 +1730,14 @@
             // 
             // numericUpDown2
             // 
+            numericUpDown2.Increment = new decimal(new int[] { 500, 0, 0, 0 });
             numericUpDown2.Location = new Point(104, 144);
+            numericUpDown2.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
+            numericUpDown2.Minimum = new decimal(new int[] { 250, 0, 0, 0 });
             numericUpDown2.Name = "numericUpDown2";
             numericUpDown2.Size = new Size(218, 27);
             numericUpDown2.TabIndex = 2;
+            numericUpDown2.Value = new decimal(new int[] { 250, 0, 0, 0 });
             // 
             // richTextBox6
             // 
@@ -1748,6 +1793,7 @@
             button29.TabIndex = 0;
             button29.Text = "Добавить услугу";
             button29.UseVisualStyleBackColor = true;
+            button29.Click += button29_Click_1;
             // 
             // dataGridView7
             // 
@@ -1772,6 +1818,26 @@
             panel24.Name = "panel24";
             panel24.Size = new Size(326, 173);
             panel24.TabIndex = 11;
+            // 
+            // button43
+            // 
+            button43.Location = new Point(4, 36);
+            button43.Name = "button43";
+            button43.Size = new Size(319, 29);
+            button43.TabIndex = 8;
+            button43.Text = "Сохранить в CSV";
+            button43.UseVisualStyleBackColor = true;
+            button43.Click += button43_Click;
+            // 
+            // button42
+            // 
+            button42.Location = new Point(4, 141);
+            button42.Name = "button42";
+            button42.Size = new Size(319, 29);
+            button42.TabIndex = 7;
+            button42.Text = "Сменить УЗ";
+            button42.UseVisualStyleBackColor = true;
+            button42.Click += button42_Click;
             // 
             // textBox12
             // 
@@ -1808,66 +1874,6 @@
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
             button34.Click += button34_Click;
-            // 
-            // button38
-            // 
-            button38.Location = new Point(4, 71);
-            button38.Name = "button38";
-            button38.Size = new Size(184, 29);
-            button38.TabIndex = 6;
-            button38.Text = "Сменить УЗ";
-            button38.UseVisualStyleBackColor = true;
-            button38.Click += button38_Click;
-            // 
-            // button39
-            // 
-            button39.Location = new Point(5, 140);
-            button39.Name = "button39";
-            button39.Size = new Size(312, 29);
-            button39.TabIndex = 7;
-            button39.Text = "Сменить УЗ";
-            button39.UseVisualStyleBackColor = true;
-            button39.Click += button39_Click;
-            // 
-            // button40
-            // 
-            button40.Location = new Point(3, 107);
-            button40.Name = "button40";
-            button40.Size = new Size(188, 29);
-            button40.TabIndex = 7;
-            button40.Text = "Сменить УЗ";
-            button40.UseVisualStyleBackColor = true;
-            button40.Click += button40_Click;
-            // 
-            // button41
-            // 
-            button41.Location = new Point(709, 71);
-            button41.Name = "button41";
-            button41.Size = new Size(185, 56);
-            button41.TabIndex = 7;
-            button41.Text = "Сменить УЗ";
-            button41.UseVisualStyleBackColor = true;
-            button41.Click += button41_Click;
-            // 
-            // button42
-            // 
-            button42.Location = new Point(4, 141);
-            button42.Name = "button42";
-            button42.Size = new Size(319, 29);
-            button42.TabIndex = 7;
-            button42.Text = "Сменить УЗ";
-            button42.UseVisualStyleBackColor = true;
-            button42.Click += button42_Click;
-            // 
-            // button43
-            // 
-            button43.Location = new Point(4, 36);
-            button43.Name = "button43";
-            button43.Size = new Size(319, 29);
-            button43.TabIndex = 8;
-            button43.Text = "Сохранить в CSV";
-            button43.UseVisualStyleBackColor = true;
-            button43.Click += button43_Click;
             // 
             // Form1
             // 

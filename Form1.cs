@@ -43,6 +43,8 @@ namespace SecurityAgencysApp
 
             // Подписываемся на кнопку удаления сотрудника
             button37.Click += button37_Click;
+            button29.Click += button29_Click_1;
+            //button36.Click += button36_Click_1;
 
             // Загружаем данные при старте формы
             Load += Form1_Load;
@@ -58,6 +60,9 @@ namespace SecurityAgencysApp
             // Подписка на переключение вкладок — при переходе будем обновлять гриды вкладки назначения
             if (tabControl1 != null)
                 tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
+
+            // В конструкторе Form1, после строки button26.Click += button26_Click;
+            button27.Click += button27_Click;
         }
 
         private async void Form1_Load(object? sender, EventArgs e)
@@ -82,6 +87,18 @@ namespace SecurityAgencysApp
             // По умолчанию делаем panel8 недоступной для ввода (если нужно)
             if (panel2 != null)
                 panel2.Enabled = false;
+
+            if (panel10 != null)
+                panel10.Enabled = false;
+
+            if (panel8 != null)
+                panel8.Enabled = false;
+
+            if (panel11 != null)
+                panel11.Enabled = false;
+
+            if (panel17 != null)
+                panel17.Enabled = false;
         }
 
         /// <summary>
@@ -1485,10 +1502,10 @@ namespace SecurityAgencysApp
 
         }
 
-        private void button20_Click(object sender, EventArgs e)
-        {
+        //private void button20_Click(object sender, EventArgs e)
+        //{
 
-        }
+        //}
 
         private void button21_Click(object sender, EventArgs e)
         {
@@ -2169,6 +2186,265 @@ namespace SecurityAgencysApp
 
         }
 
+        //private void button27_Click(object sender, EventArgs e)
+        //{
+
+        //}
+
+
+        private void button20_Click(object sender, EventArgs e)
+        {
+            // Разблокировать элементы panel10 для ввода данных нового клиента
+            if (panel10 == null) return;
+
+            panel10.Enabled = true;
+
+            // Очистим все поля внутри panel10
+            foreach (Control c in panel10.Controls)
+            {
+                switch (c)
+                {
+                    case TextBox tb:
+                        tb.Clear();
+                        break;
+                    case RichTextBox rtb:
+                        rtb.Clear();
+                        break;
+                }
+            }
+
+            // Переместим фокус на первый элемент
+            if (panel10.Controls.Count > 0)
+                panel10.Controls[0].Focus();
+        }
+
+        private async void button27_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Проверка, что panel10 активна
+                if (panel10 == null || !panel10.Enabled)
+                {
+                    MessageBox.Show(this, "Сначала нажмите 'Добавить заказчика'.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Сбор данных из полей panel10
+                var name = textBox11.Text.Trim();
+                var surname = textBox10.Text.Trim();
+                var secondName = textBox9.Text.Trim();
+                var address = textBox14.Text.Trim();
+                var phone = textBox13.Text.Trim();
+                var accountNumber = richTextBox4.Text.Trim();
+
+                // Валидация обязательных полей
+                if (string.IsNullOrEmpty(name))
+                {
+                    MessageBox.Show(this, "Введите имя клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(surname))
+                {
+                    MessageBox.Show(this, "Введите фамилию клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов ADD_CLIENT
+                try
+                {
+                    await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                    await using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "ADD_CLIENT";
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("NAME", name);
+                    cmd.Parameters.AddWithValue("SURNAME", surname);
+                    cmd.Parameters.AddWithValue("SECOND_NAME", secondName);
+                    cmd.Parameters.AddWithValue("ADDRESS", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
+                    cmd.Parameters.AddWithValue("PHONE", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                    cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(accountNumber) ? DBNull.Value : (object)accountNumber);
+
+                    int newClientId = -1;
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        if (ColumnExists(reader, "CLIENT_ID") && !reader.IsDBNull(reader.GetOrdinal("CLIENT_ID")))
+                            newClientId = reader.GetInt32(reader.GetOrdinal("CLIENT_ID"));
+                    }
+
+                    if (newClientId > 0)
+                    {
+                        MessageBox.Show(this, $"Клиент успешно добавлен (ID: {newClientId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очистим поля ввода
+                        textBox11.Clear();
+                        textBox10.Clear();
+                        textBox9.Clear();
+                        textBox14.Clear();
+                        textBox13.Clear();
+                        richTextBox4.Clear();
+
+                        // Блокируем panel10
+                        if (panel10 != null)
+                            panel10.Enabled = false;
+
+                        // Обновляем таблицу клиентов
+                        await LoadClientsWithCountsAsync();
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "Клиент добавлен, но не удалось получить ID.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await LoadClientsWithCountsAsync();
+                    }
+                }
+                catch (FbException fbEx)
+                {
+                    MessageBox.Show(this, $"Ошибка БД при добавлении клиента: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"Ошибка при добавлении клиента: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void button29_Click_1(object sender, EventArgs e)
+        {
+            if (panel17 == null) return;
+
+            panel17.Enabled = true;
+
+            // Очистим все поля внутри panel17
+            foreach (Control c in panel17.Controls)
+            {
+                switch (c)
+                {
+                    case TextBox tb:
+                        tb.Clear();
+                        break;
+                    case RichTextBox rtb:
+                        rtb.Clear();
+                        break;
+                    case NumericUpDown nud:
+                        nud.Value = nud.Minimum;
+                        break;
+                }
+            }
+
+            // Переместим фокус на первый элемент
+            if (panel17.Controls.Count > 0)
+                panel17.Controls[0].Focus();
+        }
+
+        private async void button36_Click_1(object sender, EventArgs e)
+        {
+            try
+            {
+                // Проверка, что panel17 активна
+                if (panel17 == null || !panel17.Enabled)
+                {
+                    MessageBox.Show(this, "Сначала нажмите 'Добавить услугу'.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Сбор данных из полей panel17
+                // Предполагаем, что в panel17 находятся поля для названия услуги и стоимости
+                var serviceName = GetControlTextSafe(panel17, new[] { "richTextBox6" }).Trim();
+                var costStr = GetControlTextSafe(panel17, new[] { "numericUpDown2" }).Trim();
+
+                // Валидация обязательных полей
+                if (string.IsNullOrEmpty(serviceName))
+                {
+                    MessageBox.Show(this, "Введите название услуги.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (!decimal.TryParse(costStr, out var unitCost) || unitCost < 0)
+                {
+                    MessageBox.Show(this, "Введите корректную стоимость услуги.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Вызов ADD_SERVICETYPE
+                try
+                {
+                    await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                    await using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "ADD_SERVICETYPE";
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("SERVICENAME", serviceName);
+                    cmd.Parameters.AddWithValue("UNIT_COST", unitCost);
+
+                    int newServiceTypeId = -1;
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
+                            newServiceTypeId = reader.GetInt32(reader.GetOrdinal("ID"));
+                    }
+
+                    if (newServiceTypeId > 0)
+                    {
+                        MessageBox.Show(this, $"Тип услуги успешно добавлен (ID: {newServiceTypeId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очистим поля ввода
+                        foreach (Control c in panel17.Controls)
+                        {
+                            switch (c)
+                            {
+                                case TextBox tb:
+                                    tb.Clear();
+                                    break;
+                                case RichTextBox rtb:
+                                    rtb.Clear();
+                                    break;
+                                case NumericUpDown nud:
+                                    nud.Value = nud.Minimum;
+                                    break;
+                            }
+                        }
+
+                        // Блокируем panel17
+                        if (panel17 != null)
+                            panel17.Enabled = false;
+
+                        // Обновляем таблицу услуг
+                        await LoadServiceTypesAsync();
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "Тип услуги добавлен, но не удалось получить ID.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await LoadServiceTypesAsync();
+                    }
+                }
+                catch (FbException fbEx)
+                {
+                    MessageBox.Show(this, $"Ошибка БД при добавлении услуги: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"Ошибка при добавлении услуги: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         //private void textBox12_TextChanged_1(object sender, EventArgs e)
         //{
 
