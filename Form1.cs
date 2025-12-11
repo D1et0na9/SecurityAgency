@@ -1514,7 +1514,40 @@ namespace SecurityAgencysApp
 
         private void button21_Click(object sender, EventArgs e)
         {
+            // Проверим выбранную строку в dataGridView2
+            if (dataGridView2.CurrentRow == null)
+            {
+                MessageBox.Show(this, "Выберите клиента в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
+            // Разблокируем panel10
+            if (panel10 == null) return;
+            panel10.Enabled = true;
+
+            // Получаем данные из выбранной строки
+            var clientId = GetRowCellString(dataGridView2.CurrentRow, "ID");
+            var name = GetRowCellString(dataGridView2.CurrentRow, "NAME");
+            var surname = GetRowCellString(dataGridView2.CurrentRow, "SURNAME");
+            var secondName = GetRowCellString(dataGridView2.CurrentRow, "SECOND_NAME");
+            var address = GetRowCellString(dataGridView2.CurrentRow, "ADDRESS");
+            var phone = GetRowCellString(dataGridView2.CurrentRow, "PHONE");
+            var accountNumber = GetRowCellString(dataGridView2.CurrentRow, "ACCOUNT_NUMBER");
+
+            // Заполняем элементы panel10 (в panel10: textBox11, textBox10, textBox9, textBox14, textBox13, richTextBox4)
+            textBox11.Text = name;
+            textBox10.Text = surname;
+            textBox9.Text = secondName;
+            textBox14.Text = address;
+            textBox13.Text = phone;
+            richTextBox4.Text = accountNumber;
+
+            // Сохраняем ID редактируемого клиента
+            _editingId = int.TryParse(clientId, out var id) ? id : -1;
+
+            // Переместим фокус на первый элемент
+            if (panel10.Controls.Count > 0)
+                panel10.Controls[0].Focus();
         }
 
         private async void button22_Click(object sender, EventArgs e)
@@ -1587,7 +1620,77 @@ namespace SecurityAgencysApp
 
         private void button4_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим, есть ли данные в dataGridView2
+                if (dataGridView2 == null || dataGridView2.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет данных для сохранения.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить таблицу?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "clients.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить таблицу клиентов",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки колонок
+                    var headers = new List<string>();
+                    foreach (DataGridViewColumn col in dataGridView2.Columns)
+                    {
+                        // Пропускаем скрытые колонки
+                        if (!col.Visible) continue;
+                        headers.Add($"\"{col.HeaderText}\"");
+                    }
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные строк
+                    foreach (DataGridViewRow row in dataGridView2.Rows)
+                    {
+                        var values = new List<string>();
+                        foreach (DataGridViewColumn col in dataGridView2.Columns)
+                        {
+                            // Пропускаем скрытые колонки
+                            if (!col.Visible) continue;
+
+                            var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                            // Экранируем кавычки и оборачиваем в кавычки
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Таблица успешно сохранена в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблицы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void button17_Click(object sender, EventArgs e)
@@ -2282,22 +2385,22 @@ namespace SecurityAgencysApp
 
         private void button38_Click(object sender, EventArgs e)
         {
-
+            HandleLogout();
         }
 
         private void button39_Click(object sender, EventArgs e)
         {
-
+            HandleLogout();
         }
 
         private void button40_Click(object sender, EventArgs e)
         {
-
+            HandleLogout();
         }
 
         private void button41_Click(object sender, EventArgs e)
         {
-
+            HandleLogout();
         }
 
         private void button43_Click(object sender, EventArgs e)
@@ -2354,7 +2457,7 @@ namespace SecurityAgencysApp
         }
         private void button42_Click(object sender, EventArgs e)
         {
-
+            HandleLogout();
         }
 
         //private void button27_Click(object sender, EventArgs e)
@@ -2393,7 +2496,88 @@ namespace SecurityAgencysApp
         {
             try
             {
-                // Проверка, что panel10 активна
+                // Проверяем, редактируется ли клиент (был ли вызван button21)
+                if (_editingId > 0)
+                {
+                    // РЕЖИМ РЕДАКТИРОВАНИЯ
+                    if (panel10 == null || !panel10.Enabled)
+                    {
+                        MessageBox.Show(this, "Панель редактирования не активна.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    // Сбор данных из полей panel10
+                    var name = textBox11.Text.Trim();
+                    var surname = textBox10.Text.Trim();
+                    var secondName = textBox9.Text.Trim();
+                    var address = textBox14.Text.Trim();
+                    var phone = textBox13.Text.Trim();
+                    var accountNumber = richTextBox4.Text.Trim();
+
+                    // Валидация обязательных полей
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        MessageBox.Show(this, "Введите имя клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty(surname))
+                    {
+                        MessageBox.Show(this, "Введите фамилию клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Подтверждение сохранения
+                    var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить изменения?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
+
+                    // Вызов UPDATE_CLIENT
+                    try
+                    {
+                        await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                        await using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "UPDATE_CLIENT";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("ID", _editingId);
+                        cmd.Parameters.AddWithValue("NAME", name);
+                        cmd.Parameters.AddWithValue("SURNAME", surname);
+                        cmd.Parameters.AddWithValue("SECOND_NAME", string.IsNullOrEmpty(secondName) ? DBNull.Value : (object)secondName);
+                        cmd.Parameters.AddWithValue("ADDRESS", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
+                        cmd.Parameters.AddWithValue("PHONE", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
+                        cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(accountNumber) ? DBNull.Value : (object)accountNumber);
+
+                        await cmd.ExecuteNonQueryAsync();
+
+                        MessageBox.Show(this, "Клиент успешно обновлён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очищаем и блокируем panel10
+                        textBox11.Clear();
+                        textBox10.Clear();
+                        textBox9.Clear();
+                        textBox14.Clear();
+                        textBox13.Clear();
+                        richTextBox4.Clear();
+
+                        panel10.Enabled = false;
+                        _editingId = -1;
+
+                        // Обновляем таблицу клиентов
+                        await LoadClientsWithCountsAsync();
+                    }
+                    catch (FbException fbEx)
+                    {
+                        MessageBox.Show(this, $"Ошибка БД при обновлении клиента: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, $"Ошибка при обновлении клиента: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    return;
+                }
+
+                // РЕЖИМ ДОБАВЛЕНИЯ НОВОГО КЛИЕНТА (существующая логика)
                 if (panel10 == null || !panel10.Enabled)
                 {
                     MessageBox.Show(this, "Сначала нажмите 'Добавить заказчика'.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2401,29 +2585,29 @@ namespace SecurityAgencysApp
                 }
 
                 // Сбор данных из полей panel10
-                var name = textBox11.Text.Trim();
-                var surname = textBox10.Text.Trim();
-                var secondName = textBox9.Text.Trim();
-                var address = textBox14.Text.Trim();
-                var phone = textBox13.Text.Trim();
-                var accountNumber = richTextBox4.Text.Trim();
+                var newName = textBox11.Text.Trim();
+                var newSurname = textBox10.Text.Trim();
+                var newSecondName = textBox9.Text.Trim();
+                var newAddress = textBox14.Text.Trim();
+                var newPhone = textBox13.Text.Trim();
+                var newAccountNumber = richTextBox4.Text.Trim();
 
                 // Валидация обязательных полей
-                if (string.IsNullOrEmpty(name))
+                if (string.IsNullOrEmpty(newName))
                 {
                     MessageBox.Show(this, "Введите имя клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                if (string.IsNullOrEmpty(surname))
+                if (string.IsNullOrEmpty(newSurname))
                 {
                     MessageBox.Show(this, "Введите фамилию клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
                 // Подтверждение сохранения
-                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (dr != DialogResult.Yes) return;
+                var confirmDr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirmDr != DialogResult.Yes) return;
 
                 // Вызов ADD_CLIENT
                 try
@@ -2433,12 +2617,12 @@ namespace SecurityAgencysApp
                     cmd.CommandText = "ADD_CLIENT";
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    cmd.Parameters.AddWithValue("NAME", name);
-                    cmd.Parameters.AddWithValue("SURNAME", surname);
-                    cmd.Parameters.AddWithValue("SECOND_NAME", secondName);
-                    cmd.Parameters.AddWithValue("ADDRESS", string.IsNullOrEmpty(address) ? DBNull.Value : (object)address);
-                    cmd.Parameters.AddWithValue("PHONE", string.IsNullOrEmpty(phone) ? DBNull.Value : (object)phone);
-                    cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(accountNumber) ? DBNull.Value : (object)accountNumber);
+                    cmd.Parameters.AddWithValue("NAME", newName);
+                    cmd.Parameters.AddWithValue("SURNAME", newSurname);
+                    cmd.Parameters.AddWithValue("SECOND_NAME", newSecondName);
+                    cmd.Parameters.AddWithValue("ADDRESS", string.IsNullOrEmpty(newAddress) ? DBNull.Value : (object)newAddress);
+                    cmd.Parameters.AddWithValue("PHONE", string.IsNullOrEmpty(newPhone) ? DBNull.Value : (object)newPhone);
+                    cmd.Parameters.AddWithValue("ACCOUNT_NUMBER", string.IsNullOrEmpty(newAccountNumber) ? DBNull.Value : (object)newAccountNumber);
 
                     int newClientId = -1;
                     await using var reader = await cmd.ExecuteReaderAsync();
@@ -2664,6 +2848,32 @@ namespace SecurityAgencysApp
                 MessageBox.Show(this, $"Ошибка при удалении услуги: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        private void HandleLogout()
+        {
+            try
+            {
+                // Подтверждение смены учётной записи
+                var dr = MessageBox.Show(
+                    this,
+                    "Вы уверены что хотите сменить учётную запись?",
+                    "Подтвердите действие",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (dr != DialogResult.Yes) return;
+
+                // Закрываем текущую форму с результатом Retry
+                this.DialogResult = DialogResult.Retry;
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при смене учётной записи: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
         //private void textBox12_TextChanged_1(object sender, EventArgs e)
         //{
 

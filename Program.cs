@@ -37,15 +37,39 @@ namespace SecurityAgencysApp
             using (var loginForm = new LoginForm())
             {
                 var result = loginForm.ShowDialog();
-                if (result == DialogResult.OK)
-                {
-                    // Пользователь авторизован — запускаем главное окно
-                    Application.Run(new Form1());
-                }
-                else
+                if (result != DialogResult.OK)
                 {
                     // Пользователь отменил вход — выходим
                     return;
+                }
+            }
+
+            // 3) Цикл запуска главной формы с поддержкой повторной авторизации
+            bool shouldRestart = true;
+            while (shouldRestart)
+            {
+                shouldRestart = false;
+                
+                using (var form = new Form1())
+                {
+                    // Запускаем главное окно
+                    Application.Run(form);
+
+                    // Если пользователь выбрал смену учётной записи
+                    if (form.DialogResult == DialogResult.Retry)
+                    {
+                        // Показываем форму авторизации снова
+                        using (var loginForm = new LoginForm())
+                        {
+                            var result = loginForm.ShowDialog();
+                            if (result == DialogResult.OK)
+                            {
+                                // Пользователь успешно авторизовался — перезапускаем главное окно
+                                shouldRestart = true;
+                            }
+                            // Если отменил, цикл завершится и приложение закроется
+                        }
+                    }
                 }
             }
         }
