@@ -285,6 +285,8 @@
             checkedListBox2.RightToLeft = RightToLeft.No;
             checkedListBox2.Size = new Size(396, 158);
             checkedListBox2.TabIndex = 2;
+            //checkedListBox2.SelectedIndexChanged += checkedListBox2_SelectedIndexChanged;
+            checkedListBox2.ItemCheck += CheckedListBox2_ItemCheck;
             // 
             // label13
             // 
@@ -313,6 +315,8 @@
             checkedListBox1.RightToLeft = RightToLeft.No;
             checkedListBox1.Size = new Size(392, 158);
             checkedListBox1.TabIndex = 1;
+            //checkedListBox1.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
+            checkedListBox1.ItemCheck += CheckedListBox1_ItemCheck;
             // 
             // label12
             // 
@@ -329,6 +333,7 @@
             dataGridView6.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView6.Location = new Point(630, 38);
             dataGridView6.Name = "dataGridView6";
+            dataGridView6.RightToLeft = RightToLeft.No;
             dataGridView6.RowHeadersWidth = 51;
             dataGridView6.Size = new Size(614, 360);
             dataGridView6.TabIndex = 1;
@@ -358,6 +363,7 @@
             dataGridView5.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView5.Location = new Point(6, 38);
             dataGridView5.Name = "dataGridView5";
+            dataGridView5.RightToLeft = RightToLeft.No;
             dataGridView5.RowHeadersWidth = 51;
             dataGridView5.Size = new Size(612, 360);
             dataGridView5.TabIndex = 0;
@@ -819,7 +825,7 @@
             // 
             splitContainer3.Panel2.Controls.Add(dataGridView3);
             splitContainer3.Size = new Size(1247, 664);
-            splitContainer3.SplitterDistance = 324;
+            splitContainer3.SplitterDistance = 374;
             splitContainer3.TabIndex = 0;
             // 
             // panel21
@@ -832,7 +838,7 @@
             panel21.Controls.Add(button9);
             panel21.Location = new Point(3, 522);
             panel21.Name = "panel21";
-            panel21.Size = new Size(320, 139);
+            panel21.Size = new Size(368, 139);
             panel21.TabIndex = 2;
             // 
             // button40
@@ -849,7 +855,7 @@
             // 
             button10.Location = new Point(4, 72);
             button10.Name = "button10";
-            button10.Size = new Size(312, 29);
+            button10.Size = new Size(361, 29);
             button10.TabIndex = 5;
             button10.Text = "Сортировать";
             button10.UseVisualStyleBackColor = true;
@@ -860,7 +866,7 @@
             textBox3.Location = new Point(3, 4);
             textBox3.Name = "textBox3";
             textBox3.PlaceholderText = "Поиск";
-            textBox3.Size = new Size(313, 27);
+            textBox3.Size = new Size(362, 27);
             textBox3.TabIndex = 2;
             textBox3.TextChanged += textBox3_TextChanged;
             // 
@@ -868,7 +874,7 @@
             // 
             button8.Location = new Point(4, 37);
             button8.Name = "button8";
-            button8.Size = new Size(312, 29);
+            button8.Size = new Size(361, 29);
             button8.TabIndex = 3;
             button8.Text = "Сохранить в CSV";
             button8.UseVisualStyleBackColor = true;
@@ -878,7 +884,7 @@
             // 
             button9.Location = new Point(197, 107);
             button9.Name = "button9";
-            button9.Size = new Size(119, 29);
+            button9.Size = new Size(168, 29);
             button9.TabIndex = 4;
             button9.Text = "Обновить";
             button9.UseVisualStyleBackColor = true;
@@ -900,23 +906,24 @@
             panel8.Controls.Add(label39);
             panel8.Location = new Point(3, 116);
             panel8.Name = "panel8";
-            panel8.Size = new Size(320, 400);
+            panel8.Size = new Size(368, 400);
             panel8.TabIndex = 1;
             // 
             // button35
             // 
             button35.Location = new Point(3, 365);
             button35.Name = "button35";
-            button35.Size = new Size(313, 29);
+            button35.Size = new Size(362, 29);
             button35.TabIndex = 40;
             button35.Text = "Сохранить";
             button35.UseVisualStyleBackColor = true;
+            button35.Click += button35_Click;
             // 
             // richTextBox3
             // 
             richTextBox3.Location = new Point(125, 239);
             richTextBox3.Name = "richTextBox3";
-            richTextBox3.Size = new Size(191, 120);
+            richTextBox3.Size = new Size(240, 120);
             richTextBox3.TabIndex = 39;
             richTextBox3.Text = "";
             // 
@@ -924,7 +931,7 @@
             // 
             richTextBox2.Location = new Point(125, 72);
             richTextBox2.Name = "richTextBox2";
-            richTextBox2.Size = new Size(191, 127);
+            richTextBox2.Size = new Size(240, 127);
             richTextBox2.TabIndex = 38;
             richTextBox2.Text = "";
             // 
@@ -933,7 +940,7 @@
             comboBox9.FormattingEnabled = true;
             comboBox9.Location = new Point(125, 205);
             comboBox9.Name = "comboBox9";
-            comboBox9.Size = new Size(191, 28);
+            comboBox9.Size = new Size(240, 28);
             comboBox9.TabIndex = 37;
             // 
             // comboBox8
@@ -941,7 +948,7 @@
             comboBox8.FormattingEnabled = true;
             comboBox8.Location = new Point(125, 39);
             comboBox8.Name = "comboBox8";
-            comboBox8.Size = new Size(191, 28);
+            comboBox8.Size = new Size(240, 28);
             comboBox8.TabIndex = 35;
             // 
             // comboBox7
@@ -949,8 +956,9 @@
             comboBox7.FormattingEnabled = true;
             comboBox7.Location = new Point(125, 6);
             comboBox7.Name = "comboBox7";
-            comboBox7.Size = new Size(191, 28);
+            comboBox7.Size = new Size(240, 28);
             comboBox7.TabIndex = 34;
+            comboBox7.SelectedIndexChanged += comboBox7_SelectedIndexChanged;
             // 
             // label34
             // 
@@ -1005,14 +1013,14 @@
             panel7.Controls.Add(button17);
             panel7.Location = new Point(3, 3);
             panel7.Name = "panel7";
-            panel7.Size = new Size(320, 107);
+            panel7.Size = new Size(368, 107);
             panel7.TabIndex = 0;
             // 
             // button19
             // 
             button19.Location = new Point(3, 73);
             button19.Name = "button19";
-            button19.Size = new Size(313, 29);
+            button19.Size = new Size(362, 29);
             button19.TabIndex = 2;
             button19.Text = "Удалить объекты";
             button19.UseVisualStyleBackColor = true;
@@ -1022,7 +1030,7 @@
             // 
             button18.Location = new Point(3, 38);
             button18.Name = "button18";
-            button18.Size = new Size(313, 29);
+            button18.Size = new Size(362, 29);
             button18.TabIndex = 1;
             button18.Text = "Редактировать объекты";
             button18.UseVisualStyleBackColor = true;
@@ -1032,7 +1040,7 @@
             // 
             button17.Location = new Point(3, 3);
             button17.Name = "button17";
-            button17.Size = new Size(313, 29);
+            button17.Size = new Size(362, 29);
             button17.TabIndex = 0;
             button17.Text = "Добавить объекты";
             button17.UseVisualStyleBackColor = true;

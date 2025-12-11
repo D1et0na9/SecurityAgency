@@ -33,6 +33,9 @@ namespace SecurityAgencysApp
         // Флаг чтобы избежать повторных одновременных обновлений при быстром переключении вкладок
         private bool _isTabRefreshInProgress = false;
 
+        private string _currentTable1Name = ""; // Текущая таблица для dataGridView5
+        private string _currentTable2Name = "";
+
         public Form1()
         {
             InitializeComponent();
@@ -45,6 +48,10 @@ namespace SecurityAgencysApp
             button37.Click += button37_Click;
             button29.Click += button29_Click_1;
             //button36.Click += button36_Click_1;
+
+            // В конструкторе Form1, после строки button27.Click += button27_Click;
+            button17.Click += button17_Click;
+            button35.Click += button35_Click;
 
             // Загружаем данные при старте формы
             Load += Form1_Load;
@@ -67,6 +74,8 @@ namespace SecurityAgencysApp
 
         private async void Form1_Load(object? sender, EventArgs e)
         {
+            await LoadAvailableTablesAsync();
+
             await LoadEmployeesAsync();
 
             // Загружаем клиентов с подсчётом связанных объектов и заказов
@@ -84,6 +93,10 @@ namespace SecurityAgencysApp
             // Загружаем справочник должностей для формы Добавления сотрудника
             await LoadPositionsAsync();
 
+            // В конце метода Form1_Load, после загрузки других данных
+            //await LoadClientsForComboBox();
+            //await LoadEmployeesForComboBox();
+
             // По умолчанию делаем panel8 недоступной для ввода (если нужно)
             if (panel2 != null)
                 panel2.Enabled = false;
@@ -99,6 +112,19 @@ namespace SecurityAgencysApp
 
             if (panel17 != null)
                 panel17.Enabled = false;
+
+            if (comboBox1 != null)
+                comboBox1.SelectedIndexChanged += ComboBox1_SelectedIndexChanged;
+
+            if (comboBox2 != null)
+                comboBox2.SelectedIndexChanged += ComboBox2_SelectedIndexChanged;
+
+            if (checkedListBox1 != null)
+                checkedListBox1.ItemCheck += CheckedListBox1_ItemCheck;
+
+            if (checkedListBox2 != null)
+                checkedListBox2.ItemCheck += CheckedListBox2_ItemCheck;
+
         }
 
         /// <summary>
@@ -1695,7 +1721,34 @@ namespace SecurityAgencysApp
 
         private void button17_Click(object sender, EventArgs e)
         {
+            // Разблокировать элементы panel8 для ввода данных нового охраняемого объекта
+            if (panel8 == null) return;
 
+            panel8.Enabled = true;
+
+            // Очистим все поля внутри panel8
+            foreach (Control c in panel8.Controls)
+            {
+                switch (c)
+                {
+                    case TextBox tb:
+                        tb.Clear();
+                        break;
+                    case RichTextBox rtb:
+                        rtb.Clear();
+                        break;
+                    case ComboBox cb:
+                        cb.SelectedIndex = -1;
+                        break;
+                    case NumericUpDown nud:
+                        nud.Value = nud.Minimum;
+                        break;
+                }
+            }
+
+            // Переместим фокус на первый элемент
+            if (panel8.Controls.Count > 0)
+                panel8.Controls[0].Focus();
         }
 
         private void button18_Click(object sender, EventArgs e)
@@ -2777,7 +2830,6 @@ namespace SecurityAgencysApp
                         if (panel17 != null)
                             panel17.Enabled = false;
 
-                        // Обновляем таблицу услуг
                         await LoadServiceTypesAsync();
                     }
                     else
@@ -2799,6 +2851,7 @@ namespace SecurityAgencysApp
             {
                 MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            await LoadServiceTypesAsync();
         }
 
         private async void button30_Click(object sender, EventArgs e)
@@ -2840,7 +2893,7 @@ namespace SecurityAgencysApp
             }
             catch (FbException fbEx)
             {
-                // Отобразим сообщение от СУБД (например, исключение EX_DELETE_PROTECTED)
+                // Отобразим сообщение от СУБД 
                 MessageBox.Show(this, $"Ошибка БД при удалении услуги: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
@@ -2849,6 +2902,74 @@ namespace SecurityAgencysApp
             }
         }
 
+        private Dictionary<string, string> GetColumnHeadersForTable(string tableName)
+        {
+            return tableName switch
+            {
+                "GET_CLIENTS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "NAME", "Имя" },
+            { "SURNAME", "Фамилия" },
+            { "SECOND_NAME", "Отчество" },
+            { "ADDRESS", "Адрес" },
+            { "PHONE", "Телефон" },
+            { "ACCOUNT_NUMBER", "Л/сч" },
+            { "IS_ACTIVE", "Активен" }
+        },
+                "GET_EMPLOYEES" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "NAME", "Имя" },
+            { "SURNAME", "Фамилия" },
+            { "SECOND_NAME", "Отчество" },
+            { "HIRE_DATE", "Дата приёма" },
+            { "SALARY", "Оклад" },
+            { "EDUCATION", "Образование" },
+            { "POSITION_NAME", "Должность" },
+            { "PHOTO", "Фото" }
+        },
+                "GET_GUARDEDOBJECTS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "ORDER_ID", "Номер заказа" },
+            { "CLIENT_FIO", "Клиент" },
+            { "OBJECT_ADDRESS", "Адрес объекта" },
+            { "DESCRIPTION", "Описание" }
+        },
+                "GET_GUARDCALLS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "OBJECT_ADDRESS", "Адрес объекта" },
+            { "EMPLOYEE_FIO", "Сотрудник" },
+            { "CALL_DATETIME", "Дата/время вызова" },
+            { "RESULT", "Результат" }
+        },
+                "GET_ORDERS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "CLIENT_ID", "ID клиента" },
+            { "CLIENT_FIO", "Клиент" },
+            { "ORDER_DATE", "Дата заказа" },
+            { "EXECUTION_DATE", "Дата исполнения" },
+            { "TOTAL_REVENUE", "Итоговая сумма" }
+        },
+                "GET_ORDER_DETAILS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "ORDER_ID", "Номер заказа" },
+            { "CLIENT_FIO", "Клиент" },
+            { "SERVICENAME", "Услуга" },
+            { "QUANTITY", "Кол-во" },
+            { "SERVICE_AMOUNT", "Стоимость" },
+            { "TOTAL_LINE", "Сумма" }
+        },
+                "GET_POSITIONS" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "NAME", "Название" }
+        },
+                "GET_SERVICETYPES" => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "SERVICENAME", "Название" },
+            { "UNIT_COST", "Стоимость" }
+        },
+                _ => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            };
+        }
         private void HandleLogout()
         {
             try
@@ -2873,10 +2994,248 @@ namespace SecurityAgencysApp
             }
         }
 
+        private async Task LoadAvailableTablesAsync()
+        {
+            try
+            {
+                var tables = new Dictionary<string, string>
+        {
+            { "GET_CLIENTS", "Клиенты" },
+            { "GET_EMPLOYEES", "Сотрудники" },
+            { "GET_GUARDEDOBJECTS", "Охраняемые объекты" },
+            { "GET_GUARDCALLS", "Вызовы" },
+            { "GET_ORDERS", "Заказы" },
+            { "GET_ORDER_DETAILS", "Детали заказов" },
+            { "GET_POSITIONS", "Должности" },
+            { "GET_SERVICETYPES", "Типы услуг" }
+        };
 
-        //private void textBox12_TextChanged_1(object sender, EventArgs e)
-        //{
+                if (comboBox1 != null)
+                {
+                    comboBox1.DataSource = new BindingSource(tables.ToList(), null);
+                    comboBox1.DisplayMember = "Value";
+                    comboBox1.ValueMember = "Key";
+                    comboBox1.SelectedIndex = -1; // Ничего не выбирать по умолчанию
+                }
 
-        //}
+                if (comboBox2 != null)
+                {
+                    comboBox2.DataSource = new BindingSource(new List<KeyValuePair<string, string>>(tables), null);
+                    comboBox2.DisplayMember = "Value";
+                    comboBox2.ValueMember = "Key";
+                    comboBox2.SelectedIndex = -1; // Ничего не выбирать по умолчанию
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке списка таблиц: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void PopulateCheckedListBox(CheckedListBox checkedListBox, DataGridView dgv)
+        {
+            try
+            {
+                checkedListBox.Items.Clear();
+
+                foreach (DataGridViewColumn col in dgv.Columns)
+                {
+                    if (!string.IsNullOrEmpty(col.Name) &&
+                        !col.Name.Contains("ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Добавляем элемент с русским заголовком
+                        int index = checkedListBox.Items.Add(col.HeaderText, col.Visible);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при заполнении списка столбцов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Обновляет видимость столбцов в DataGridView на основе состояния CheckedListBox
+        /// </summary>
+        private void UpdateDataGridViewColumnsVisibility(CheckedListBox checkedListBox, DataGridView dgv)
+        {
+            try
+            {
+                var checkedItems = new HashSet<string>();
+                foreach (var item in checkedListBox.CheckedItems)
+                {
+                    checkedItems.Add(item.ToString() ?? "");
+                }
+
+                foreach (DataGridViewColumn col in dgv.Columns)
+                {
+                    if (!string.IsNullOrEmpty(col.Name) &&
+                        col.Name.Contains("ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Столбцы с ID всегда скрыты
+                        col.Visible = false;
+                    }
+                    else
+                    {
+                        // Столбец видим только если его заголовок в списке отмеченных
+                        col.Visible = checkedItems.Contains(col.HeaderText);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при обновлении видимости столбцов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает данные выбранной таблицы в dataGridView, скрывая все колонки с ID
+        /// </summary>
+        private async Task LoadTableDataAsync(string tableName, DataGridView dgv)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(tableName) || dgv == null)
+                    return;
+
+                dgv.ReadOnly = true;
+                dgv.AllowUserToAddRows = false;
+                dgv.AllowUserToDeleteRows = false;
+                dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                dgv.MultiSelect = false;
+                dgv.AutoGenerateColumns = true;
+                dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+
+                var table = new DataTable();
+
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = tableName;
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                table.Load(reader);
+
+                dgv.DataSource = table;
+
+                // Словарь с русскими названиями столбцов для каждой таблицы
+                var columnHeaders = GetColumnHeadersForTable(tableName);
+
+                // Скрываем все колонки с "ID" и применяем русские подписи
+                foreach (DataGridViewColumn col in dgv.Columns)
+                {
+                    if (!string.IsNullOrEmpty(col.Name))
+                    {
+                        // Скрываем колонки с ID
+                        if (col.Name.Contains("ID", StringComparison.OrdinalIgnoreCase))
+                        {
+                            col.Visible = false;
+                            continue;
+                        }
+
+                        if (col.Name.Contains("PHOTO", StringComparison.OrdinalIgnoreCase))
+                        {
+                            col.Visible = false;
+                            continue;
+                        }
+
+                        if (col.Name.Contains("CONTRACT_SCAN", StringComparison.OrdinalIgnoreCase))
+                        {
+                            col.Visible = false;
+                            continue;
+                        }
+
+                        // Применяем русский заголовок если есть в словаре
+                        if (columnHeaders.TryGetValue(col.Name, out var russianHeader))
+                        {
+                            col.HeaderText = russianHeader;
+                        }
+                        else
+                        {
+                            // Если нет в словаре, форматируем как есть (пробелы вместо подчеркивания)
+                            col.HeaderText = col.Name.Replace('_', ' ');
+                        }
+                    }
+
+                    // Форматируем дата/время колонки
+                    if (col.ValueType == typeof(DateTime))
+                    {
+                        col.DefaultCellStyle.Format = "g";
+                    }
+
+                    // Форматируем decimal колонки
+                    if (col.ValueType == typeof(decimal))
+                    {
+                        col.DefaultCellStyle.Format = "N2";
+                        col.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                    }
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД при загрузке таблицы '{tableName}': {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке таблицы '{tableName}': {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void ComboBox1_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (comboBox1.SelectedValue is string tableName && !string.IsNullOrEmpty(tableName))
+                {
+                    _currentTable1Name = tableName;
+                    await LoadTableDataAsync(tableName, dataGridView5);
+                    PopulateCheckedListBox(checkedListBox1, dataGridView5);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void ComboBox2_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (comboBox2.SelectedValue is string tableName && !string.IsNullOrEmpty(tableName))
+                {
+                    _currentTable2Name = tableName;
+                    await LoadTableDataAsync(tableName, dataGridView6);
+                    PopulateCheckedListBox(checkedListBox2, dataGridView6);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        private async void button35_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void comboBox7_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CheckedListBox1_ItemCheck(object? sender, ItemCheckEventArgs e)
+        {
+            // Используем BeginInvoke чтобы обновить видимость после изменения состояния
+            this.BeginInvoke(new Action(() => UpdateDataGridViewColumnsVisibility(checkedListBox1, dataGridView5)));
+        }
+
+        private void CheckedListBox2_ItemCheck(object? sender, ItemCheckEventArgs e)
+        {
+            // Используем BeginInvoke чтобы обновить видимость после изменения состояния
+            this.BeginInvoke(new Action(() => UpdateDataGridViewColumnsVisibility(checkedListBox2, dataGridView6)));
+        }
     }
 }
