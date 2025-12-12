@@ -1446,7 +1446,78 @@ namespace SecurityAgencysApp
         private async void button1_Click(object sender, EventArgs e)
         {
             // Сохранение в CSV — оставлено без изменений пока
-            await Task.CompletedTask;
+            //await Task.CompletedTask;
+            try
+            {
+                // Проверим, есть ли данные в dataGridView1
+                if (dataGridView1 == null || dataGridView1.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет данных для сохранения.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить таблицу?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "employees.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить таблицу сотрудников",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки колонок
+                    var headers = new List<string>();
+                    foreach (DataGridViewColumn col in dataGridView1.Columns)
+                    {
+                        // Пропускаем скрытые колонки
+                        if (!col.Visible) continue;
+                        headers.Add($"\"{col.HeaderText}\"");
+                    }
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные строк
+                    foreach (DataGridViewRow row in dataGridView1.Rows)
+                    {
+                        var values = new List<string>();
+                        foreach (DataGridViewColumn col in dataGridView1.Columns)
+                        {
+                            // Пропускаем скрытые колонки
+                            if (!col.Visible) continue;
+
+                            var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                            // Экранируем кавычки и оборачиваем в кавычки
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Таблица успешно сохранена в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблицы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void button2_Click(object sender, EventArgs e)
@@ -1830,7 +1901,77 @@ namespace SecurityAgencysApp
 
         private void button8_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим, есть ли данные в dataGridView3
+                if (dataGridView3 == null || dataGridView3.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет данных для сохранения.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить таблицу?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "objects.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить таблицу охраняемых объектов",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки колонок
+                    var headers = new List<string>();
+                    foreach (DataGridViewColumn col in dataGridView3.Columns)
+                    {
+                        // Пропускаем скрытые колонки
+                        if (!col.Visible) continue;
+                        headers.Add($"\"{col.HeaderText}\"");
+                    }
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные строк
+                    foreach (DataGridViewRow row in dataGridView3.Rows)
+                    {
+                        var values = new List<string>();
+                        foreach (DataGridViewColumn col in dataGridView3.Columns)
+                        {
+                            // Пропускаем скрытые колонки
+                            if (!col.Visible) continue;
+
+                            var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                            // Экранируем кавычки и оборачиваем в кавычки
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Таблица успешно сохранена в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблицы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         //private void button10_Click(object sender, EventArgs e)
@@ -1932,7 +2073,77 @@ namespace SecurityAgencysApp
 
         private void button11_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим, есть ли данные в dataGridView4
+                if (dataGridView4 == null || dataGridView4.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет данных для сохранения.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить таблицу?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "ordersandcalls.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить таблицу вызовов и заказов",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки колонок
+                    var headers = new List<string>();
+                    foreach (DataGridViewColumn col in dataGridView4.Columns)
+                    {
+                        // Пропускаем скрытые колонки
+                        if (!col.Visible) continue;
+                        headers.Add($"\"{col.HeaderText}\"");
+                    }
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные строк
+                    foreach (DataGridViewRow row in dataGridView4.Rows)
+                    {
+                        var values = new List<string>();
+                        foreach (DataGridViewColumn col in dataGridView4.Columns)
+                        {
+                            // Пропускаем скрытые колонки
+                            if (!col.Visible) continue;
+
+                            var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                            // Экранируем кавычки и оборачиваем в кавычки
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Таблица успешно сохранена в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблицы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void button12_Click(object sender, EventArgs e)
