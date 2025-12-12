@@ -1980,9 +1980,155 @@ namespace SecurityAgencysApp
 
         }
 
+        private string GetTableDisplayName(string tableName)
+        {
+            return tableName switch
+            {
+                "GET_CLIENTS" => "Клиенты",
+                "GET_EMPLOYEES" => "Сотрудники",
+                "GET_GUARDEDOBJECTS" => "Охраняемые объекты",
+                "GET_GUARDCALLS" => "Вызовы",
+                "GET_ORDERS" => "Заказы",
+                "GET_ORDER_DETAILS" => "Детали заказов",
+                "GET_POSITIONS" => "Должности",
+                "GET_SERVICETYPES" => "Типы услуг",
+                _ => tableName
+            };
+        }
+
+        private void WriteTableToCSV(StreamWriter writer, DataGridView dgv, string tableName)
+        {
+            if (dgv.Rows.Count == 0)
+                return;
+
+            // Заголовок таблицы
+            writer.WriteLine($"--- {GetTableDisplayName(tableName)} ---");
+
+            // Собираем видимые колонки (без ID)
+            var visibleColumns = new List<DataGridViewColumn>();
+            foreach (DataGridViewColumn col in dgv.Columns)
+            {
+                if (col.Visible && !string.IsNullOrEmpty(col.Name) &&
+                    !col.Name.Contains("ID", StringComparison.OrdinalIgnoreCase))
+                {
+                    visibleColumns.Add(col);
+                }
+            }
+
+            // Записываем заголовки колонок
+            var headers = visibleColumns.Select(col => $"\"{col.HeaderText}\"").ToList();
+            writer.WriteLine(string.Join(",", headers));
+
+            // Записываем данные строк
+            foreach (DataGridViewRow row in dgv.Rows)
+            {
+                var values = new List<string>();
+                foreach (var col in visibleColumns)
+                {
+                    var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                    // Экранируем кавычки и оборачиваем в кавычки
+                    cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                    values.Add(cellValue);
+                }
+                writer.WriteLine(string.Join(",", values));
+            }
+        }
+
+        private void WriteMergedRelatedTables(StreamWriter writer, DataGridView dgv1, DataGridView dgv2, string table1Name, string table2Name)
+        {
+            // Пока напишем таблицы отдельно
+            // В будущем здесь можно добавить логику объединения по JOIN
+            WriteTableToCSV(writer, dgv1, table1Name);
+            writer.WriteLine();
+            WriteTableToCSV(writer, dgv2, table2Name);
+        }
+
+        private bool AreTablesRelated(string table1Name, string table2Name)
+        {
+            // Определяем связи между таблицами на основе их первичных и внешних ключей
+            var relationships = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "GET_CLIENTS", new HashSet<string> { "GET_ORDERS", "GET_GUARDEDOBJECTS" } },
+        { "GET_ORDERS", new HashSet<string> { "GET_CLIENTS", "GET_ORDER_DETAILS", "GET_GUARDEDOBJECTS" } },
+        { "GET_EMPLOYEES", new HashSet<string> { "GET_GUARDCALLS", "GET_POSITIONS" } },
+        { "GET_GUARDCALLS", new HashSet<string> { "GET_EMPLOYEES", "GET_GUARDEDOBJECTS" } },
+        { "GET_GUARDEDOBJECTS", new HashSet<string> { "GET_ORDERS", "GET_GUARDCALLS" } },
+        { "GET_ORDER_DETAILS", new HashSet<string> { "GET_ORDERS", "GET_SERVICETYPES" } },
+        { "GET_POSITIONS", new HashSet<string> { "GET_EMPLOYEES" } },
+    };
+
+            if (relationships.TryGetValue(table1Name, out var related))
+            {
+                return related.Contains(table2Name);
+            }
+
+            return false;
+        }
+
+        private void ExportMergedTablesToCSV(string filePath, DataGridView dgv1, DataGridView dgv2, string table1Name, string table2Name)
+        {
+            using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+            {
+                // Если таблицы связаны, объединяем их
+                if (AreTablesRelated(table1Name, table2Name))
+                {
+                    WriteMergedRelatedTables(writer, dgv1, dgv2, table1Name, table2Name);
+                }
+                else
+                {
+                    // Если таблицы не связаны, пишем их отдельно
+                    WriteTableToCSV(writer, dgv1, table1Name);
+                    writer.WriteLine();
+                    WriteTableToCSV(writer, dgv2, table2Name);
+                }
+            }
+        }
+
         private void button3_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим, загружены ли обе таблицы
+                if (dataGridView5.Rows.Count == 0 && dataGridView6.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "Обе таблицы пусты. Выберите таблицы в выпадающих списках.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить объединённые таблицы?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "mergedoutput.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить объединённые таблицы",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                ExportMergedTablesToCSV(filePath, dataGridView5, dataGridView6, _currentTable1Name, _currentTable2Name);
+
+                MessageBox.Show(this, $"Таблицы успешно сохранены в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблиц: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void splitContainer5_Panel1_Paint(object sender, PaintEventArgs e)
@@ -3236,6 +3382,11 @@ namespace SecurityAgencysApp
         {
             // Используем BeginInvoke чтобы обновить видимость после изменения состояния
             this.BeginInvoke(new Action(() => UpdateDataGridViewColumnsVisibility(checkedListBox2, dataGridView6)));
+        }
+
+        private void button31_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

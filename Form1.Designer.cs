@@ -189,6 +189,7 @@
             button32 = new Button();
             button33 = new Button();
             button34 = new Button();
+            button44 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -285,7 +286,6 @@
             checkedListBox2.RightToLeft = RightToLeft.No;
             checkedListBox2.Size = new Size(396, 158);
             checkedListBox2.TabIndex = 2;
-            //checkedListBox2.SelectedIndexChanged += checkedListBox2_SelectedIndexChanged;
             checkedListBox2.ItemCheck += CheckedListBox2_ItemCheck;
             // 
             // label13
@@ -315,7 +315,6 @@
             checkedListBox1.RightToLeft = RightToLeft.No;
             checkedListBox1.Size = new Size(392, 158);
             checkedListBox1.TabIndex = 1;
-            //checkedListBox1.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
             checkedListBox1.ItemCheck += CheckedListBox1_ItemCheck;
             // 
             // label12
@@ -488,6 +487,7 @@
             // panel22
             // 
             panel22.BackColor = Color.Gainsboro;
+            panel22.Controls.Add(button44);
             panel22.Controls.Add(button3);
             panel22.Location = new Point(439, 614);
             panel22.Name = "panel22";
@@ -498,7 +498,7 @@
             // 
             button3.Location = new Point(3, 5);
             button3.Name = "button3";
-            button3.Size = new Size(800, 39);
+            button3.Size = new Size(395, 39);
             button3.TabIndex = 3;
             button3.Text = "Сохранить в CSV";
             button3.UseVisualStyleBackColor = true;
@@ -1793,6 +1793,7 @@
             button31.TabIndex = 1;
             button31.Text = "Редактировать услугу";
             button31.UseVisualStyleBackColor = true;
+            button31.Click += button31_Click;
             // 
             // button29
             // 
@@ -1883,6 +1884,15 @@
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
             button34.Click += button34_Click;
+            // 
+            // button44
+            // 
+            button44.Location = new Point(404, 5);
+            button44.Name = "button44";
+            button44.Size = new Size(399, 39);
+            button44.TabIndex = 4;
+            button44.Text = "Готовые решения отчётов";
+            button44.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
@@ -2130,5 +2140,6 @@
         private Button button39;
         private Button button43;
         private Button button42;
+        private Button button44;
     }
 }
