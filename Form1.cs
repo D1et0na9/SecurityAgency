@@ -47,6 +47,7 @@ namespace SecurityAgencysApp
             // Подписываемся на кнопку удаления сотрудника
             button37.Click += button37_Click;
             button29.Click += button29_Click_1;
+            //button31.Click += button31_Click;
             //button36.Click += button36_Click_1;
 
             // В конструкторе Form1, после строки button27.Click += button27_Click;
@@ -2604,7 +2605,77 @@ namespace SecurityAgencysApp
 
         private void button43_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим, есть ли данные в dataGridView7
+                if (dataGridView7 == null || dataGridView7.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "В таблице нет данных для сохранения.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить таблицу?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = "servicetypes.csv",
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить таблицу услуг",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                var filePath = sfd.FileName;
+
+                // Экспорт в CSV
+                using (var writer = new StreamWriter(filePath, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки колонок
+                    var headers = new List<string>();
+                    foreach (DataGridViewColumn col in dataGridView7.Columns)
+                    {
+                        // Пропускаем скрытые колонки
+                        if (!col.Visible) continue;
+                        headers.Add($"\"{col.HeaderText}\"");
+                    }
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные строк
+                    foreach (DataGridViewRow row in dataGridView7.Rows)
+                    {
+                        var values = new List<string>();
+                        foreach (DataGridViewColumn col in dataGridView7.Columns)
+                        {
+                            // Пропускаем скрытые колонки
+                            if (!col.Visible) continue;
+
+                            var cellValue = row.Cells[col.Index].Value?.ToString() ?? string.Empty;
+                            // Экранируем кавычки и оборачиваем в кавычки
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Таблица успешно сохранена в файл:\n{filePath}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "Нет прав доступа для сохранения файла в выбранную папку.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении файла: {ioEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при сохранении таблицы: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         //private void button34_Click(object sender, EventArgs e)
@@ -2906,13 +2977,12 @@ namespace SecurityAgencysApp
                 // Проверка, что panel17 активна
                 if (panel17 == null || !panel17.Enabled)
                 {
-                    MessageBox.Show(this, "Сначала нажмите 'Добавить услугу'.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, "Сначала выберите услугу для редактирования.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
                 // Сбор данных из полей panel17
-                // Предполагаем, что в panel17 находятся поля для названия услуги и стоимости
-                var serviceName = GetControlTextSafe(panel17, new[] { "richTextBox6" }).Trim();
+                var serviceName = GetControlTextSafe(panel17, new[] { "richTextBox6", "textBox15" }).Trim();
                 var costStr = GetControlTextSafe(panel17, new[] { "numericUpDown2" }).Trim();
 
                 // Валидация обязательных полей
@@ -2928,11 +2998,68 @@ namespace SecurityAgencysApp
                     return;
                 }
 
-                // Подтверждение сохранения
-                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (dr != DialogResult.Yes) return;
+                // Если редактируем существующую услугу
+                if (_editingId > 0)
+                {
+                    // Подтверждение сохранения
+                    var dr = MessageBox.Show(this, "Вы уверены что хотите изменить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
 
-                // Вызов ADD_SERVICETYPE
+                    // Вызов UPDATE_SERVICETYPE
+                    try
+                    {
+                        await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                        await using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "UPDATE_SERVICETYPE";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("ID", _editingId);
+                        cmd.Parameters.AddWithValue("SERVICENAME", serviceName);
+                        cmd.Parameters.AddWithValue("UNIT_COST", unitCost);
+
+                        await cmd.ExecuteNonQueryAsync();
+
+                        MessageBox.Show(this, "Тип услуги успешно обновлён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очищаем и блокируем panel17
+                        foreach (Control c in panel17.Controls)
+                        {
+                            switch (c)
+                            {
+                                case TextBox tb:
+                                    tb.Clear();
+                                    break;
+                                case RichTextBox rtb:
+                                    rtb.Clear();
+                                    break;
+                                case NumericUpDown nud:
+                                    nud.Value = nud.Minimum;
+                                    break;
+                            }
+                        }
+
+                        panel17.Enabled = false;
+                        _editingId = -1;
+
+                        // Обновляем таблицу услуг
+                        await LoadServiceTypesAsync();
+                    }
+                    catch (FbException fbEx)
+                    {
+                        MessageBox.Show(this, $"Ошибка БД при обновлении услуги: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, $"Ошибка при обновлении услуги: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    return;
+                }
+
+                // Если добавляем новую услугу (существующая логика)
+                var addConfirm = MessageBox.Show(this, "Вы уверены что хотите добавить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (addConfirm != DialogResult.Yes) return;
+
                 try
                 {
                     await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
@@ -2955,7 +3082,7 @@ namespace SecurityAgencysApp
                     {
                         MessageBox.Show(this, $"Тип услуги успешно добавлен (ID: {newServiceTypeId}).", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        // Очистим поля ввода
+                        // Очищаем и блокируем panel17
                         foreach (Control c in panel17.Controls)
                         {
                             switch (c)
@@ -2972,9 +3099,7 @@ namespace SecurityAgencysApp
                             }
                         }
 
-                        // Блокируем panel17
-                        if (panel17 != null)
-                            panel17.Enabled = false;
+                        panel17.Enabled = false;
 
                         await LoadServiceTypesAsync();
                     }
@@ -3386,7 +3511,49 @@ namespace SecurityAgencysApp
 
         private void button31_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверяем, выбрана ли строка в dataGridView7
+                if (dataGridView7.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите тип услуги в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Разблокируем panel17
+                if (panel17 == null) return;
+                panel17.Enabled = true;
+
+                // Получаем данные из выбранной строки
+                var serviceId = GetRowCellString(dataGridView7.CurrentRow, "ID");
+                var serviceName = GetRowCellString(dataGridView7.CurrentRow, "SERVICENAME");
+                var unitCost = GetRowCellString(dataGridView7.CurrentRow, "UNIT_COST");
+
+                // Заполняем элементы panel17
+                var nameControl = FindControlRecursive(panel17, new[] { "richTextBox6", "textBox15" });
+                if (nameControl is RichTextBox rtb)
+                    rtb.Text = serviceName;
+                else if (nameControl is TextBox tb)
+                    tb.Text = serviceName;
+
+                var costControl = FindControlRecursive(panel17, new[] { "numericUpDown2" });
+                if (costControl is NumericUpDown nud && decimal.TryParse(unitCost, out var cost))
+                {
+                    cost = Math.Max(nud.Minimum, Math.Min(nud.Maximum, cost));
+                    nud.Value = cost;
+                }
+
+                // Сохраняем ID редактируемой услуги
+                _editingId = int.TryParse(serviceId, out var id) ? id : -1;
+
+                // Переместим фокус на первый элемент
+                if (panel17.Controls.Count > 0)
+                    panel17.Controls[0].Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

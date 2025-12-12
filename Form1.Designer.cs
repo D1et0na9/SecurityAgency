@@ -52,6 +52,7 @@
             comboBox2 = new ComboBox();
             comboBox1 = new ComboBox();
             panel22 = new Panel();
+            button44 = new Button();
             button3 = new Button();
             tabPage4 = new TabPage();
             splitContainer4 = new SplitContainer();
@@ -186,10 +187,8 @@
             button43 = new Button();
             button42 = new Button();
             textBox12 = new TextBox();
-            button32 = new Button();
             button33 = new Button();
             button34 = new Button();
-            button44 = new Button();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -493,6 +492,15 @@
             panel22.Name = "panel22";
             panel22.Size = new Size(806, 47);
             panel22.TabIndex = 8;
+            // 
+            // button44
+            // 
+            button44.Location = new Point(404, 5);
+            button44.Name = "button44";
+            button44.Size = new Size(399, 39);
+            button44.TabIndex = 4;
+            button44.Text = "Готовые решения отчётов";
+            button44.UseVisualStyleBackColor = true;
             // 
             // button3
             // 
@@ -1818,10 +1826,9 @@
             // panel24
             // 
             panel24.BackColor = Color.Gainsboro;
+            panel24.Controls.Add(textBox12);
             panel24.Controls.Add(button43);
             panel24.Controls.Add(button42);
-            panel24.Controls.Add(textBox12);
-            panel24.Controls.Add(button32);
             panel24.Controls.Add(button33);
             panel24.Controls.Add(button34);
             panel24.Location = new Point(5, 343);
@@ -1858,13 +1865,6 @@
             textBox12.TabIndex = 2;
             textBox12.TextChanged += textBox12_TextChanged;
             // 
-            // button32
-            // 
-            button32.Location = new Point(0, 0);
-            button32.Name = "button32";
-            button32.Size = new Size(75, 23);
-            button32.TabIndex = 3;
-            // 
             // button33
             // 
             button33.Location = new Point(4, 106);
@@ -1884,15 +1884,6 @@
             button34.Text = "Сортировать";
             button34.UseVisualStyleBackColor = true;
             button34.Click += button34_Click;
-            // 
-            // button44
-            // 
-            button44.Location = new Point(404, 5);
-            button44.Name = "button44";
-            button44.Size = new Size(399, 39);
-            button44.TabIndex = 4;
-            button44.Text = "Готовые решения отчётов";
-            button44.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
@@ -2123,7 +2114,6 @@
         private DataGridView dataGridView7;
         private Panel panel24;
         private TextBox textBox12;
-        private Button button32;
         private Button button33;
         private Button button34;
         private Panel panel17;
