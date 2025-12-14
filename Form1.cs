@@ -52,7 +52,7 @@ namespace SecurityAgencysApp
 
             // В конструкторе Form1, после строки button27.Click += button27_Click;
             button17.Click += button17_Click;
-            button35.Click += button35_Click;
+            //button35.Click += button35_Click;
 
             button14.Click += button14_Click;
             //button28.Click += button28_Click;
@@ -101,6 +101,10 @@ namespace SecurityAgencysApp
             await LoadEmployeesForComboBoxAsync();
             await LoadGuardedObjectsForComboBoxAsync();
             await LoadServiceTypesForComboBoxAsync();
+
+            // Загружаем клиентов и сотрудников для comboBox7 и comboBox9
+            await LoadClientsForComboBox7Async();
+            await LoadEmployeesForComboBox9Async();
 
             // В конце метода Form1_Load, после загрузки других данных
             //await LoadClientsForComboBox();
@@ -227,6 +231,102 @@ namespace SecurityAgencysApp
                         comboBox5.ValueMember = "ID";
                         comboBox5.DataSource = table;
                         comboBox5.SelectedIndex = -1;
+                    }
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке сотрудников (БД): {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке сотрудников: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает клиентов в comboBox7 с отображением их ФИО
+        /// </summary>
+        private async Task LoadClientsForComboBox7Async()
+        {
+            try
+            {
+                var table = new DataTable();
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "GET_CLIENTS";
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                await using var rdr = await cmd.ExecuteReaderAsync();
+                table.Load(rdr);
+
+                // Если SP вернула поля ID и нужные данные — привязываем
+                if (table.Columns.Contains("ID"))
+                {
+                    // Создаём колонку для отображения (ФИО)
+                    table.Columns.Add("DISPLAY", typeof(string));
+                    foreach (DataRow row in table.Rows)
+                    {
+                        var surname = row["SURNAME"]?.ToString() ?? string.Empty;
+                        var name = row["NAME"]?.ToString() ?? string.Empty;
+                        var secondName = row["SECOND_NAME"]?.ToString() ?? string.Empty;
+                        row["DISPLAY"] = string.Join(" ", new[] { surname, name, secondName }.Where(s => !string.IsNullOrEmpty(s))).Trim();
+                    }
+
+                    if (comboBox7 != null)
+                    {
+                        comboBox7.DisplayMember = "DISPLAY";
+                        comboBox7.ValueMember = "ID";
+                        comboBox7.DataSource = table.Copy();
+                        comboBox7.SelectedIndex = -1;
+                    }
+                }
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке клиентов (БД): {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при загрузке клиентов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Загружает сотрудников в comboBox9 с отображением их ФИО
+        /// </summary>
+        private async Task LoadEmployeesForComboBox9Async()
+        {
+            try
+            {
+                var table = new DataTable();
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "GET_EMPLOYEES";
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                await using var rdr = await cmd.ExecuteReaderAsync();
+                table.Load(rdr);
+
+                // Если SP вернула поля ID и нужные данные — привязываем
+                if (table.Columns.Contains("ID"))
+                {
+                    // Создаём колонку для отображения (ФИО)
+                    table.Columns.Add("DISPLAY", typeof(string));
+                    foreach (DataRow row in table.Rows)
+                    {
+                        var surname = row["SURNAME"]?.ToString() ?? string.Empty;
+                        var name = row["NAME"]?.ToString() ?? string.Empty;
+                        var secondName = row["SECOND_NAME"]?.ToString() ?? string.Empty;
+                        row["DISPLAY"] = string.Join(" ", new[] { surname, name, secondName }.Where(s => !string.IsNullOrEmpty(s))).Trim();
+                    }
+
+                    if (comboBox9 != null)
+                    {
+                        comboBox9.DisplayMember = "DISPLAY";
+                        comboBox9.ValueMember = "ID";
+                        comboBox9.DataSource = table.Copy();
+                        comboBox9.SelectedIndex = -1;
                     }
                 }
             }
@@ -768,17 +868,41 @@ namespace SecurityAgencysApp
                 table.Columns.Add("DESCRIPTION", typeof(string)).Caption = "Описание";
                 table.Columns.Add("CALL_COUNT", typeof(int)).Caption = "Вызовов";
                 table.Columns.Add("LAST_CALL_DATETIME", typeof(DateTime)).Caption = "Последний вызов";
-                // Убраны: ORDER_ID, LAST_CALL_EMPLOYEE, LAST_CALL_RESULT
 
                 // Колонка поиска
                 table.Columns.Add("SEARCH", typeof(string));
 
-                // Сохраняем только даты вызовов для каждого адреса
-                var callsByAddress = new Dictionary<string, List<DateTime>>(StringComparer.OrdinalIgnoreCase);
-
                 await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
 
-                // Читаем только те поля из GET_GUARDCALLS, которые нам нужны: OBJECT_ADDRESS и CALL_DATETIME
+                // Загружаем статистику вызовов (CALL_COUNT) из новой хранимой процедуры
+                var callStatsByObjectId = new Dictionary<int, int>();
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "GET_GUARDOBJECT_CALL_STATS";
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        int? objectId = null;
+                        int? callCount = null;
+
+                        if (ColumnExists(reader, "OBJECT_ID") && !reader.IsDBNull(reader.GetOrdinal("OBJECT_ID")))
+                            objectId = reader.GetInt32(reader.GetOrdinal("OBJECT_ID"));
+
+                        if (ColumnExists(reader, "CALL_COUNT") && !reader.IsDBNull(reader.GetOrdinal("CALL_COUNT")))
+                            callCount = reader.GetInt32(reader.GetOrdinal("CALL_COUNT"));
+
+                        if (objectId.HasValue && callCount.HasValue)
+                        {
+                            callStatsByObjectId[objectId.Value] = callCount.Value;
+                        }
+                    }
+                }
+
+                // Сохраняем только даты вызовов для каждого адреса (для определения последнего вызова)
+                var callsByAddress = new Dictionary<string, List<DateTime>>(StringComparer.OrdinalIgnoreCase);
+
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "GET_GUARDCALLS";
@@ -823,9 +947,13 @@ namespace SecurityAgencysApp
                         string? addr = null;
                         string clientFio = string.Empty;
                         string desc = string.Empty;
+                        int objectId = -1;
 
                         if (ColumnExists(reader, "ID") && !reader.IsDBNull(reader.GetOrdinal("ID")))
-                            row["ID"] = reader.GetInt32(reader.GetOrdinal("ID"));
+                        {
+                            objectId = reader.GetInt32(reader.GetOrdinal("ID"));
+                            row["ID"] = objectId;
+                        }
 
                         if (ColumnExists(reader, "CLIENT_FIO") && !reader.IsDBNull(reader.GetOrdinal("CLIENT_FIO")))
                         {
@@ -845,12 +973,21 @@ namespace SecurityAgencysApp
                             row["DESCRIPTION"] = desc;
                         }
 
-                        row["CALL_COUNT"] = 0;
+                        // CALL_COUNT получаем из хранимой процедуры, а не расчитываем в коде
+                        if (objectId > 0 && callStatsByObjectId.TryGetValue(objectId, out var callCount))
+                        {
+                            row["CALL_COUNT"] = callCount;
+                        }
+                        else
+                        {
+                            row["CALL_COUNT"] = 0;
+                        }
+
                         row["LAST_CALL_DATETIME"] = DBNull.Value;
 
+                        // Определяем последний вызов по адресу (из памяти, так как статистика в БД)
                         if (!string.IsNullOrEmpty(addr) && callsByAddress.TryGetValue(addr, out var calls) && calls.Count > 0)
                         {
-                            row["CALL_COUNT"] = calls.Count;
                             var last = calls.OrderByDescending(x => x).First();
                             row["LAST_CALL_DATETIME"] = last;
                         }
@@ -3932,7 +4069,209 @@ namespace SecurityAgencysApp
         }
         private async void button35_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверяем, активна ли panel8
+                if (panel8 == null || !panel8.Enabled)
+                {
+                    MessageBox.Show(this, "Сначала нажмите кнопку добавления охраняемого объекта.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Сбор данных из элементов panel8
+                var comboBox7 = FindControlRecursive(panel8, new[] { "comboBox7" }) as ComboBox;
+                var richTextBox8 = FindControlRecursive(panel8, new[] { "richTextBox8" }) as RichTextBox;
+                var richTextBox2 = FindControlRecursive(panel8, new[] { "richTextBox2" }) as RichTextBox;
+                var comboBox9 = FindControlRecursive(panel8, new[] { "comboBox9" }) as ComboBox;
+                var richTextBox3 = FindControlRecursive(panel8, new[] { "richTextBox3" }) as RichTextBox;
+
+                // Получаем значения
+                var clientIdStr = comboBox7?.SelectedValue?.ToString() ?? string.Empty;
+                var objectAddress = richTextBox8?.Text.Trim() ?? string.Empty;
+                var description = richTextBox2?.Text.Trim() ?? string.Empty;
+                var employeeIdStr = comboBox9?.SelectedValue?.ToString() ?? string.Empty;
+                var result = richTextBox3?.Text.Trim() ?? string.Empty;
+
+                // Валидация обязательных полей
+                if (string.IsNullOrEmpty(clientIdStr) || clientIdStr == "0")
+                {
+                    MessageBox.Show(this, "Выберите клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (!int.TryParse(clientIdStr, out var clientId) || clientId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID клиента.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(objectAddress))
+                {
+                    MessageBox.Show(this, "Введите адрес охраняемого объекта.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(employeeIdStr) || employeeIdStr == "0")
+                {
+                    MessageBox.Show(this, "Выберите сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (!int.TryParse(employeeIdStr, out var employeeId) || employeeId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Подтверждение сохранения
+                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dr != DialogResult.Yes) return;
+
+                // Выполнение CRUD операций
+                try
+                {
+                    await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+
+                    // Шаг 1: Получаем ORDER_ID из клиента (берём последний активный заказ)
+                    int? orderId = null;
+                    await using (var cmdGetOrder = conn.CreateCommand())
+                    {
+                        cmdGetOrder.CommandText = @"
+                            SELECT FIRST 1 ID 
+                            FROM ORDERS 
+                            WHERE CLIENT_ID = @CLIENT_ID 
+                            ORDER BY ID DESC";
+                        cmdGetOrder.CommandType = CommandType.Text;
+                        cmdGetOrder.Parameters.AddWithValue("@CLIENT_ID", clientId);
+
+                        await using var readerOrder = await cmdGetOrder.ExecuteReaderAsync();
+                        if (await readerOrder.ReadAsync())
+                        {
+                            if (!readerOrder.IsDBNull(0))
+                                orderId = readerOrder.GetInt32(0);
+                        }
+                    }
+
+                    // Если заказа нет, создаём новый
+                    if (orderId == null || orderId <= 0)
+                    {
+                        await using (var cmdAddOrder = conn.CreateCommand())
+                        {
+                            cmdAddOrder.CommandText = "ADD_ORDER";
+                            cmdAddOrder.CommandType = CommandType.StoredProcedure;
+                            cmdAddOrder.Parameters.AddWithValue("CLIENT_ID", clientId);
+                            cmdAddOrder.Parameters.AddWithValue("ORDER_DATE", DateTime.Today);
+                            cmdAddOrder.Parameters.AddWithValue("EXECUTION_DATE", DateTime.Today);
+                            cmdAddOrder.Parameters.AddWithValue("CONTRACT_SCAN", DBNull.Value);
+
+                            await using var readerNewOrder = await cmdAddOrder.ExecuteReaderAsync();
+                            if (await readerNewOrder.ReadAsync())
+                            {
+                                if (ColumnExists(readerNewOrder, "ORDER_ID") && !readerNewOrder.IsDBNull(readerNewOrder.GetOrdinal("ORDER_ID")))
+                                    orderId = readerNewOrder.GetInt32(readerNewOrder.GetOrdinal("ORDER_ID"));
+                            }
+                        }
+                    }
+
+                    if (orderId == null || orderId <= 0)
+                    {
+                        MessageBox.Show(this, "Не удалось определить или создать заказ.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Шаг 2: Добавляем охраняемый объект через ADD_GUARDED_OBJECT
+                    int newObjectId = -1;
+                    await using (var cmdAddObject = conn.CreateCommand())
+                    {
+                        cmdAddObject.CommandText = "ADD_GUARDED_OBJECT";
+                        cmdAddObject.CommandType = CommandType.StoredProcedure;
+                        cmdAddObject.Parameters.AddWithValue("ORDER_ID", orderId.Value);
+                        cmdAddObject.Parameters.AddWithValue("OBJECT_ADDRESS", objectAddress);
+                        cmdAddObject.Parameters.AddWithValue("DESCRIPTION", string.IsNullOrEmpty(description) ? DBNull.Value : (object)description);
+
+                        await using var readerObject = await cmdAddObject.ExecuteReaderAsync();
+                        if (await readerObject.ReadAsync())
+                        {
+                            if (ColumnExists(readerObject, "OBJECT_ID") && !readerObject.IsDBNull(readerObject.GetOrdinal("OBJECT_ID")))
+                                newObjectId = readerObject.GetInt32(readerObject.GetOrdinal("OBJECT_ID"));
+                        }
+                    }
+
+                    if (newObjectId <= 0)
+                    {
+                        MessageBox.Show(this, "Не удалось создать охраняемый объект.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Шаг 3: Добавляем охранный вызов через ADD_GUARD_CALL
+                    int newCallId = -1;
+                    await using (var cmdAddCall = conn.CreateCommand())
+                    {
+                        cmdAddCall.CommandText = "ADD_GUARD_CALL";
+                        cmdAddCall.CommandType = CommandType.StoredProcedure;
+                        cmdAddCall.Parameters.AddWithValue("OBJECT_ID", newObjectId);
+                        cmdAddCall.Parameters.AddWithValue("EMPLOYEE_ID", employeeId);
+                        cmdAddCall.Parameters.AddWithValue("CALL_DATETIME", DateTime.Now);
+                        cmdAddCall.Parameters.AddWithValue("RESULT", string.IsNullOrEmpty(result) ? DBNull.Value : (object)result);
+
+                        await using var readerCall = await cmdAddCall.ExecuteReaderAsync();
+                        if (await readerCall.ReadAsync())
+                        {
+                            if (ColumnExists(readerCall, "CALL_ID") && !readerCall.IsDBNull(readerCall.GetOrdinal("CALL_ID")))
+                                newCallId = readerCall.GetInt32(readerCall.GetOrdinal("CALL_ID"));
+                        }
+                    }
+
+                    if (newCallId > 0)
+                    {
+                        MessageBox.Show(this, $"Запись успешно добавлена", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очищаем все поля в panel8
+                        foreach (Control c in panel8.Controls)
+                        {
+                            switch (c)
+                            {
+                                case TextBox tb:
+                                    tb.Clear();
+                                    break;
+                                case RichTextBox rtb:
+                                    rtb.Clear();
+                                    break;
+                                case ComboBox cb:
+                                    cb.SelectedIndex = -1;
+                                    break;
+                                case NumericUpDown nud:
+                                    nud.Value = nud.Minimum;
+                                    break;
+                            }
+                        }
+
+                        // Блокируем panel8
+                        panel8.Enabled = false;
+
+                        // Обновляем гриды
+                        await LoadGuardedObjectsCombinedAsync();
+                        await LoadGuardCallsCombinedAsync();
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "Данные добавлены, но не удалось получить ID вызова.", "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        await LoadGuardedObjectsCombinedAsync();
+                    }
+                }
+                catch (FbException fbEx)
+                {
+                    MessageBox.Show(this, $"Ошибка БД при добавлении данных: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"Ошибка при добавлении данных: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void comboBox7_SelectedIndexChanged(object sender, EventArgs e)

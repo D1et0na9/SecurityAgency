@@ -57,6 +57,8 @@
             tabPage4 = new TabPage();
             splitContainer4 = new SplitContainer();
             panel11 = new Panel();
+            label3 = new Label();
+            richTextBox7 = new RichTextBox();
             richTextBox5 = new RichTextBox();
             button28 = new Button();
             label32 = new Label();
@@ -96,7 +98,6 @@
             richTextBox3 = new RichTextBox();
             richTextBox2 = new RichTextBox();
             comboBox9 = new ComboBox();
-            comboBox8 = new ComboBox();
             comboBox7 = new ComboBox();
             label34 = new Label();
             label35 = new Label();
@@ -189,8 +190,7 @@
             button42 = new Button();
             button33 = new Button();
             button34 = new Button();
-            richTextBox7 = new RichTextBox();
-            label3 = new Label();
+            richTextBox8 = new RichTextBox();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -568,6 +568,23 @@
             panel11.Size = new Size(333, 366);
             panel11.TabIndex = 2;
             // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new Point(3, 107);
+            label3.Name = "label3";
+            label3.Size = new Size(82, 20);
+            label3.TabIndex = 22;
+            label3.Text = "Описание:";
+            // 
+            // richTextBox7
+            // 
+            richTextBox7.Location = new Point(136, 167);
+            richTextBox7.Name = "richTextBox7";
+            richTextBox7.Size = new Size(194, 93);
+            richTextBox7.TabIndex = 21;
+            richTextBox7.Text = "";
+            // 
             // richTextBox5
             // 
             richTextBox5.Location = new Point(136, 104);
@@ -907,11 +924,11 @@
             // panel8
             // 
             panel8.BackColor = Color.Gainsboro;
+            panel8.Controls.Add(richTextBox8);
             panel8.Controls.Add(button35);
             panel8.Controls.Add(richTextBox3);
             panel8.Controls.Add(richTextBox2);
             panel8.Controls.Add(comboBox9);
-            panel8.Controls.Add(comboBox8);
             panel8.Controls.Add(comboBox7);
             panel8.Controls.Add(label34);
             panel8.Controls.Add(label35);
@@ -943,9 +960,9 @@
             // 
             // richTextBox2
             // 
-            richTextBox2.Location = new Point(125, 72);
+            richTextBox2.Location = new Point(125, 113);
             richTextBox2.Name = "richTextBox2";
-            richTextBox2.Size = new Size(240, 127);
+            richTextBox2.Size = new Size(240, 86);
             richTextBox2.TabIndex = 38;
             richTextBox2.Text = "";
             // 
@@ -956,14 +973,6 @@
             comboBox9.Name = "comboBox9";
             comboBox9.Size = new Size(240, 28);
             comboBox9.TabIndex = 37;
-            // 
-            // comboBox8
-            // 
-            comboBox8.FormattingEnabled = true;
-            comboBox8.Location = new Point(125, 39);
-            comboBox8.Name = "comboBox8";
-            comboBox8.Size = new Size(240, 28);
-            comboBox8.TabIndex = 35;
             // 
             // comboBox7
             // 
@@ -995,7 +1004,7 @@
             // label37
             // 
             label37.AutoSize = true;
-            label37.Location = new Point(4, 75);
+            label37.Location = new Point(4, 113);
             label37.Name = "label37";
             label37.Size = new Size(82, 20);
             label37.TabIndex = 27;
@@ -1891,22 +1900,13 @@
             button34.UseVisualStyleBackColor = true;
             button34.Click += button34_Click;
             // 
-            // richTextBox7
+            // richTextBox8
             // 
-            richTextBox7.Location = new Point(136, 167);
-            richTextBox7.Name = "richTextBox7";
-            richTextBox7.Size = new Size(194, 93);
-            richTextBox7.TabIndex = 21;
-            richTextBox7.Text = "";
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new Point(3, 107);
-            label3.Name = "label3";
-            label3.Size = new Size(82, 20);
-            label3.TabIndex = 22;
-            label3.Text = "Описание:";
+            richTextBox8.Location = new Point(125, 39);
+            richTextBox8.Name = "richTextBox8";
+            richTextBox8.Size = new Size(240, 68);
+            richTextBox8.TabIndex = 41;
+            richTextBox8.Text = "";
             // 
             // Form1
             // 
@@ -2114,7 +2114,6 @@
         private Label label38;
         private Label label39;
         private ComboBox comboBox9;
-        private ComboBox comboBox8;
         private ComboBox comboBox7;
         private RichTextBox richTextBox1;
         private RichTextBox richTextBox3;
@@ -2156,5 +2155,6 @@
         private Button button44;
         private Label label3;
         private RichTextBox richTextBox7;
+        private RichTextBox richTextBox8;
     }
 }
