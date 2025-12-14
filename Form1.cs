@@ -2105,7 +2105,86 @@ namespace SecurityAgencysApp
 
         private void button18_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверим выбранную строку в dataGridView3
+                if (dataGridView3.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите объект в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Разблокируем panel8
+                if (panel8 == null) return;
+                panel8.Enabled = true;
+
+                // Получаем данные из выбранной строки dataGridView3
+                var objectId = GetRowCellString(dataGridView3.CurrentRow, "ID");
+                var clientFio = GetRowCellString(dataGridView3.CurrentRow, "CLIENT_FIO");
+                var objectAddress = GetRowCellString(dataGridView3.CurrentRow, "OBJECT_ADDRESS");
+                var description = GetRowCellString(dataGridView3.CurrentRow, "DESCRIPTION");
+
+                // Сохраняем ID редактируемого объекта
+                _editingId = int.TryParse(objectId, out var id) ? id : -1;
+
+                // Заполняем элементы panel8
+                var comboBox7 = FindControlRecursive(panel8, new[] { "comboBox7" }) as ComboBox;
+                var richTextBox8 = FindControlRecursive(panel8, new[] { "richTextBox8" }) as RichTextBox;
+                var richTextBox2 = FindControlRecursive(panel8, new[] { "richTextBox2" }) as RichTextBox;
+                var comboBox9 = FindControlRecursive(panel8, new[] { "comboBox9" }) as ComboBox;
+                var richTextBox3 = FindControlRecursive(panel8, new[] { "richTextBox3" }) as RichTextBox;
+
+                // Заполняем адрес и описание
+                if (richTextBox8 != null)
+                    richTextBox8.Text = objectAddress;
+
+                if (richTextBox2 != null)
+                    richTextBox2.Text = description;
+
+                // Очищаем result (так как мы редактируем только объект, а не вызов)
+                if (richTextBox3 != null)
+                    richTextBox3.Clear();
+
+                // Устанавливаем клиента в comboBox7 по его ФИО (ищем в источнике данных)
+                if (comboBox7 != null && comboBox7.DataSource != null && !string.IsNullOrEmpty(clientFio))
+                {
+                    try
+                    {
+                        var dataTable = comboBox7.DataSource as DataTable;
+                        if (dataTable != null)
+                        {
+                            // Ищем строку с совпадающим ФИО в колонке DISPLAY
+                            var row = dataTable.AsEnumerable()
+                                .FirstOrDefault(r =>
+                                {
+                                    var display = r["DISPLAY"]?.ToString() ?? string.Empty;
+                                    return display.Equals(clientFio, StringComparison.OrdinalIgnoreCase);
+                                });
+
+                            if (row != null && row.Table.Columns.Contains("ID"))
+                            {
+                                comboBox7.SelectedValue = row["ID"];
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        comboBox7.SelectedIndex = -1;
+                    }
+                }
+
+                // Сотрудника не заполняем (редактируем только объект)
+                if (comboBox9 != null)
+                    comboBox9.SelectedIndex = -1;
+
+                // Переместим фокус на первый элемент
+                if (panel8.Controls.Count > 0)
+                    panel8.Controls[0].Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void button19_Click(object sender, EventArgs e)
@@ -4111,6 +4190,92 @@ namespace SecurityAgencysApp
                     return;
                 }
 
+                // РЕЖИМ РЕДАКТИРОВАНИЯ — если _editingId установлен
+                if (_editingId > 0)
+                {
+                    var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить изменения?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
+
+                    try
+                    {
+                        await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                        await using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "UPDATE_GUARDEDOBJECT";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        // Получаем ORDER_ID из текущего объекта
+                        int orderId = -1;
+                        await using (var cmdGetOrder = conn.CreateCommand())
+                        {
+                            cmdGetOrder.CommandText = @"
+                                SELECT ORDER_ID 
+                                FROM GUARDEDOBJECTS 
+                                WHERE ID = @OBJECT_ID";
+                            cmdGetOrder.CommandType = CommandType.Text;
+                            cmdGetOrder.Parameters.AddWithValue("@OBJECT_ID", _editingId);
+
+                            await using var readerOrder = await cmdGetOrder.ExecuteReaderAsync();
+                            if (await readerOrder.ReadAsync())
+                            {
+                                if (!readerOrder.IsDBNull(0))
+                                    orderId = readerOrder.GetInt32(0);
+                            }
+                        }
+
+                        if (orderId <= 0)
+                        {
+                            MessageBox.Show(this, "Не удалось определить заказ объекта.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        // Выполняем UPDATE_GUARDEDOBJECT
+                        cmd.Parameters.AddWithValue("ID", _editingId);
+                        cmd.Parameters.AddWithValue("ORDER_ID", orderId);
+                        cmd.Parameters.AddWithValue("OBJECT_ADDRESS", objectAddress);
+                        cmd.Parameters.AddWithValue("DESCRIPTION", string.IsNullOrEmpty(description) ? DBNull.Value : (object)description);
+
+                        await cmd.ExecuteNonQueryAsync();
+
+                        MessageBox.Show(this, "Объект успешно обновлён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очищаем все поля в panel8
+                        foreach (Control c in panel8.Controls)
+                        {
+                            switch (c)
+                            {
+                                case TextBox tb:
+                                    tb.Clear();
+                                    break;
+                                case RichTextBox rtb:
+                                    rtb.Clear();
+                                    break;
+                                case ComboBox cb:
+                                    cb.SelectedIndex = -1;
+                                    break;
+                            }
+                        }
+
+                        // Блокируем panel8
+                        panel8.Enabled = false;
+                        _editingId = -1;
+
+                        // Обновляем гриды
+                        await LoadGuardedObjectsCombinedAsync();
+                        await LoadGuardCallsCombinedAsync();
+                    }
+                    catch (FbException fbEx)
+                    {
+                        MessageBox.Show(this, $"Ошибка БД при обновлении объекта: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, $"Ошибка при обновлении объекта: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    return;
+                }
+
+                // РЕЖИМ ДОБАВЛЕНИЯ — если _editingId не установлен
                 if (string.IsNullOrEmpty(employeeIdStr) || employeeIdStr == "0")
                 {
                     MessageBox.Show(this, "Выберите сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -4124,10 +4289,10 @@ namespace SecurityAgencysApp
                 }
 
                 // Подтверждение сохранения
-                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (dr != DialogResult.Yes) return;
+                var confirmDr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirmDr != DialogResult.Yes) return;
 
-                // Выполнение CRUD операций
+                // Выполнение CRUD операций для добавления
                 try
                 {
                     await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
@@ -4224,7 +4389,7 @@ namespace SecurityAgencysApp
 
                     if (newCallId > 0)
                     {
-                        MessageBox.Show(this, $"Запись успешно добавлена", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(this, "Запись успешно добавлена", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         // Очищаем все поля в panel8
                         foreach (Control c in panel8.Controls)
