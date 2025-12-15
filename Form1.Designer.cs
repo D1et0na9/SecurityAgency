@@ -43,12 +43,9 @@
             label10 = new Label();
             panel3 = new Panel();
             label9 = new Label();
-            label8 = new Label();
             label7 = new Label();
             label6 = new Label();
             label5 = new Label();
-            dateTimePicker2 = new DateTimePicker();
-            dateTimePicker1 = new DateTimePicker();
             comboBox2 = new ComboBox();
             comboBox1 = new ComboBox();
             panel22 = new Panel();
@@ -72,19 +69,17 @@
             dateTimePicker4 = new DateTimePicker();
             comboBox5 = new ComboBox();
             comboBox4 = new ComboBox();
-            panel5 = new Panel();
-            button16 = new Button();
-            button15 = new Button();
-            button14 = new Button();
-            panel4 = new Panel();
-            pictureBox2 = new PictureBox();
-            dataGridView4 = new DataGridView();
             panel23 = new Panel();
             button41 = new Button();
             textBox4 = new TextBox();
             button11 = new Button();
             button12 = new Button();
             button13 = new Button();
+            panel5 = new Panel();
+            button16 = new Button();
+            button15 = new Button();
+            button14 = new Button();
+            dataGridView4 = new DataGridView();
             tabPage3 = new TabPage();
             splitContainer3 = new SplitContainer();
             panel21 = new Panel();
@@ -94,6 +89,7 @@
             button8 = new Button();
             button9 = new Button();
             panel8 = new Panel();
+            richTextBox8 = new RichTextBox();
             button35 = new Button();
             richTextBox3 = new RichTextBox();
             richTextBox2 = new RichTextBox();
@@ -190,7 +186,7 @@
             button42 = new Button();
             button33 = new Button();
             button34 = new Button();
-            richTextBox8 = new RichTextBox();
+            comboBox8 = new ComboBox();
             tabPage5.SuspendLayout();
             panel15.SuspendLayout();
             panel14.SuspendLayout();
@@ -206,11 +202,9 @@
             splitContainer4.Panel2.SuspendLayout();
             splitContainer4.SuspendLayout();
             panel11.SuspendLayout();
-            panel5.SuspendLayout();
-            panel4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)dataGridView4).BeginInit();
             panel23.SuspendLayout();
+            panel5.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridView4).BeginInit();
             tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainer3).BeginInit();
             splitContainer3.Panel1.SuspendLayout();
@@ -390,13 +384,12 @@
             // panel3
             // 
             panel3.BackColor = Color.Gainsboro;
+            panel3.Controls.Add(comboBox8);
+            panel3.Controls.Add(button44);
             panel3.Controls.Add(label9);
-            panel3.Controls.Add(label8);
             panel3.Controls.Add(label7);
             panel3.Controls.Add(label6);
             panel3.Controls.Add(label5);
-            panel3.Controls.Add(dateTimePicker2);
-            panel3.Controls.Add(dateTimePicker1);
             panel3.Controls.Add(comboBox2);
             panel3.Controls.Add(comboBox1);
             panel3.Location = new Point(7, 407);
@@ -407,25 +400,16 @@
             // label9
             // 
             label9.AutoSize = true;
-            label9.Location = new Point(68, 9);
+            label9.Location = new Point(68, 18);
             label9.Name = "label9";
             label9.Size = new Size(293, 20);
             label9.TabIndex = 9;
             label9.Text = "Панель выбора данных сводного отчёта";
             // 
-            // label8
-            // 
-            label8.AutoSize = true;
-            label8.Location = new Point(13, 190);
-            label8.Name = "label8";
-            label8.Size = new Size(164, 20);
-            label8.TabIndex = 8;
-            label8.Text = "Сроки конца выборки";
-            // 
             // label7
             // 
             label7.AutoSize = true;
-            label7.Location = new Point(13, 137);
+            label7.Location = new Point(13, 155);
             label7.Name = "label7";
             label7.Size = new Size(171, 20);
             label7.TabIndex = 7;
@@ -434,7 +418,7 @@
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(13, 83);
+            label6.Location = new Point(13, 101);
             label6.Name = "label6";
             label6.Size = new Size(80, 20);
             label6.TabIndex = 6;
@@ -443,32 +427,16 @@
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(13, 29);
+            label5.Location = new Point(13, 47);
             label5.Name = "label5";
             label5.Size = new Size(80, 20);
             label5.TabIndex = 5;
             label5.Text = "Таблица 1";
             // 
-            // dateTimePicker2
-            // 
-            dateTimePicker2.Location = new Point(13, 213);
-            dateTimePicker2.Name = "dateTimePicker2";
-            dateTimePicker2.Size = new Size(395, 27);
-            dateTimePicker2.TabIndex = 4;
-            dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged;
-            // 
-            // dateTimePicker1
-            // 
-            dateTimePicker1.Location = new Point(13, 160);
-            dateTimePicker1.Name = "dateTimePicker1";
-            dateTimePicker1.Size = new Size(395, 27);
-            dateTimePicker1.TabIndex = 3;
-            dateTimePicker1.ValueChanged += dateTimePicker1_ValueChanged;
-            // 
             // comboBox2
             // 
             comboBox2.FormattingEnabled = true;
-            comboBox2.Location = new Point(13, 106);
+            comboBox2.Location = new Point(13, 124);
             comboBox2.Name = "comboBox2";
             comboBox2.RightToLeft = RightToLeft.No;
             comboBox2.Size = new Size(395, 28);
@@ -478,7 +446,7 @@
             // comboBox1
             // 
             comboBox1.FormattingEnabled = true;
-            comboBox1.Location = new Point(13, 52);
+            comboBox1.Location = new Point(13, 70);
             comboBox1.Name = "comboBox1";
             comboBox1.RightToLeft = RightToLeft.No;
             comboBox1.Size = new Size(395, 28);
@@ -488,7 +456,6 @@
             // panel22
             // 
             panel22.BackColor = Color.Gainsboro;
-            panel22.Controls.Add(button44);
             panel22.Controls.Add(button3);
             panel22.Location = new Point(439, 614);
             panel22.Name = "panel22";
@@ -497,18 +464,19 @@
             // 
             // button44
             // 
-            button44.Location = new Point(404, 5);
+            button44.Location = new Point(13, 212);
             button44.Name = "button44";
-            button44.Size = new Size(399, 39);
+            button44.Size = new Size(395, 39);
             button44.TabIndex = 4;
-            button44.Text = "Готовые решения отчётов";
+            button44.Text = "Сохранить готовое решение";
             button44.UseVisualStyleBackColor = true;
+            button44.Click += button44_Click;
             // 
             // button3
             // 
             button3.Location = new Point(3, 5);
             button3.Name = "button3";
-            button3.Size = new Size(395, 39);
+            button3.Size = new Size(800, 39);
             button3.TabIndex = 3;
             button3.Text = "Сохранить в CSV";
             button3.UseVisualStyleBackColor = true;
@@ -534,13 +502,12 @@
             // splitContainer4.Panel1
             // 
             splitContainer4.Panel1.Controls.Add(panel11);
+            splitContainer4.Panel1.Controls.Add(panel23);
             splitContainer4.Panel1.Controls.Add(panel5);
-            splitContainer4.Panel1.Controls.Add(panel4);
             // 
             // splitContainer4.Panel2
             // 
             splitContainer4.Panel2.Controls.Add(dataGridView4);
-            splitContainer4.Panel2.Controls.Add(panel23);
             splitContainer4.Size = new Size(1247, 664);
             splitContainer4.SplitterDistance = 340;
             splitContainer4.TabIndex = 0;
@@ -563,7 +530,7 @@
             panel11.Controls.Add(dateTimePicker4);
             panel11.Controls.Add(comboBox5);
             panel11.Controls.Add(comboBox4);
-            panel11.Location = new Point(4, 295);
+            panel11.Location = new Point(4, 116);
             panel11.Name = "panel11";
             panel11.Size = new Size(333, 366);
             panel11.TabIndex = 2;
@@ -696,13 +663,76 @@
             comboBox4.Size = new Size(194, 28);
             comboBox4.TabIndex = 7;
             // 
+            // panel23
+            // 
+            panel23.BackColor = Color.Gainsboro;
+            panel23.Controls.Add(button41);
+            panel23.Controls.Add(textBox4);
+            panel23.Controls.Add(button11);
+            panel23.Controls.Add(button12);
+            panel23.Controls.Add(button13);
+            panel23.Location = new Point(4, 488);
+            panel23.Name = "panel23";
+            panel23.Size = new Size(333, 173);
+            panel23.TabIndex = 7;
+            // 
+            // button41
+            // 
+            button41.BackColor = Color.Transparent;
+            button41.Location = new Point(3, 137);
+            button41.Name = "button41";
+            button41.Size = new Size(327, 29);
+            button41.TabIndex = 7;
+            button41.Text = "Сменить УЗ";
+            button41.UseVisualStyleBackColor = false;
+            button41.Click += button41_Click;
+            // 
+            // textBox4
+            // 
+            textBox4.Location = new Point(3, 3);
+            textBox4.Name = "textBox4";
+            textBox4.PlaceholderText = "Поиск";
+            textBox4.Size = new Size(327, 27);
+            textBox4.TabIndex = 2;
+            textBox4.TextChanged += textBox4_TextChanged;
+            // 
+            // button11
+            // 
+            button11.Location = new Point(3, 36);
+            button11.Name = "button11";
+            button11.Size = new Size(330, 29);
+            button11.TabIndex = 3;
+            button11.Text = "Сохранить в CSV";
+            button11.UseVisualStyleBackColor = true;
+            button11.Click += button11_Click;
+            // 
+            // button12
+            // 
+            button12.Location = new Point(3, 67);
+            button12.Name = "button12";
+            button12.Size = new Size(330, 29);
+            button12.TabIndex = 4;
+            button12.Text = "Обновить";
+            button12.UseVisualStyleBackColor = true;
+            button12.Click += button12_Click;
+            // 
+            // button13
+            // 
+            button13.Location = new Point(3, 102);
+            button13.Name = "button13";
+            button13.Size = new Size(327, 29);
+            button13.TabIndex = 5;
+            button13.Text = "Сортировать";
+            button13.UseVisualStyleBackColor = true;
+            button13.Click += button13_Click;
+            // 
             // panel5
             // 
             panel5.BackColor = Color.Gainsboro;
             panel5.Controls.Add(button16);
             panel5.Controls.Add(button15);
             panel5.Controls.Add(button14);
-            panel5.Location = new Point(4, 182);
+            panel5.Location = new Point(4, 3);
             panel5.Name = "panel5";
             panel5.Size = new Size(333, 107);
             panel5.TabIndex = 1;
@@ -737,25 +767,6 @@
             button14.UseVisualStyleBackColor = true;
             button14.Click += button14_Click;
             // 
-            // panel4
-            // 
-            panel4.BackColor = Color.Gainsboro;
-            panel4.Controls.Add(pictureBox2);
-            panel4.Location = new Point(4, 3);
-            panel4.Name = "panel4";
-            panel4.Size = new Size(333, 173);
-            panel4.TabIndex = 0;
-            // 
-            // pictureBox2
-            // 
-            pictureBox2.BackColor = Color.Transparent;
-            pictureBox2.Location = new Point(101, 3);
-            pictureBox2.Name = "pictureBox2";
-            pictureBox2.Size = new Size(122, 167);
-            pictureBox2.TabIndex = 0;
-            pictureBox2.TabStop = false;
-            pictureBox2.Click += pictureBox2_Click;
-            // 
             // dataGridView4
             // 
             dataGridView4.BackgroundColor = SystemColors.ControlLight;
@@ -763,71 +774,9 @@
             dataGridView4.Location = new Point(3, 3);
             dataGridView4.Name = "dataGridView4";
             dataGridView4.RowHeadersWidth = 51;
-            dataGridView4.Size = new Size(897, 525);
+            dataGridView4.Size = new Size(897, 658);
             dataGridView4.TabIndex = 0;
             dataGridView4.CellContentClick += dataGridView4_CellContentClick;
-            // 
-            // panel23
-            // 
-            panel23.BackColor = Color.Gainsboro;
-            panel23.Controls.Add(button41);
-            panel23.Controls.Add(textBox4);
-            panel23.Controls.Add(button11);
-            panel23.Controls.Add(button12);
-            panel23.Controls.Add(button13);
-            panel23.Location = new Point(3, 531);
-            panel23.Name = "panel23";
-            panel23.Size = new Size(897, 130);
-            panel23.TabIndex = 7;
-            // 
-            // button41
-            // 
-            button41.Location = new Point(709, 71);
-            button41.Name = "button41";
-            button41.Size = new Size(185, 56);
-            button41.TabIndex = 7;
-            button41.Text = "Сменить УЗ";
-            button41.UseVisualStyleBackColor = true;
-            button41.Click += button41_Click;
-            // 
-            // textBox4
-            // 
-            textBox4.Location = new Point(3, 3);
-            textBox4.Name = "textBox4";
-            textBox4.PlaceholderText = "Поиск";
-            textBox4.Size = new Size(891, 27);
-            textBox4.TabIndex = 2;
-            textBox4.TextChanged += textBox4_TextChanged;
-            // 
-            // button11
-            // 
-            button11.Location = new Point(0, 36);
-            button11.Name = "button11";
-            button11.Size = new Size(897, 29);
-            button11.TabIndex = 3;
-            button11.Text = "Сохранить в CSV";
-            button11.UseVisualStyleBackColor = true;
-            button11.Click += button11_Click;
-            // 
-            // button12
-            // 
-            button12.Location = new Point(3, 71);
-            button12.Name = "button12";
-            button12.Size = new Size(328, 56);
-            button12.TabIndex = 4;
-            button12.Text = "Обновить";
-            button12.UseVisualStyleBackColor = true;
-            button12.Click += button12_Click;
-            // 
-            // button13
-            // 
-            button13.Location = new Point(334, 71);
-            button13.Name = "button13";
-            button13.Size = new Size(369, 56);
-            button13.TabIndex = 5;
-            button13.Text = "Сортировать";
-            button13.UseVisualStyleBackColor = true;
-            button13.Click += button13_Click;
             // 
             // tabPage3
             // 
@@ -939,6 +888,14 @@
             panel8.Name = "panel8";
             panel8.Size = new Size(368, 400);
             panel8.TabIndex = 1;
+            // 
+            // richTextBox8
+            // 
+            richTextBox8.Location = new Point(125, 39);
+            richTextBox8.Name = "richTextBox8";
+            richTextBox8.Size = new Size(240, 68);
+            richTextBox8.TabIndex = 41;
+            richTextBox8.Text = "";
             // 
             // button35
             // 
@@ -1900,13 +1857,14 @@
             button34.UseVisualStyleBackColor = true;
             button34.Click += button34_Click;
             // 
-            // richTextBox8
+            // comboBox8
             // 
-            richTextBox8.Location = new Point(125, 39);
-            richTextBox8.Name = "richTextBox8";
-            richTextBox8.Size = new Size(240, 68);
-            richTextBox8.TabIndex = 41;
-            richTextBox8.Text = "";
+            comboBox8.FormattingEnabled = true;
+            comboBox8.Location = new Point(13, 178);
+            comboBox8.Name = "comboBox8";
+            comboBox8.RightToLeft = RightToLeft.No;
+            comboBox8.Size = new Size(395, 28);
+            comboBox8.TabIndex = 10;
             // 
             // Form1
             // 
@@ -1937,12 +1895,10 @@
             splitContainer4.ResumeLayout(false);
             panel11.ResumeLayout(false);
             panel11.PerformLayout();
-            panel5.ResumeLayout(false);
-            panel4.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pictureBox2).EndInit();
-            ((System.ComponentModel.ISupportInitialize)dataGridView4).EndInit();
             panel23.ResumeLayout(false);
             panel23.PerformLayout();
+            panel5.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dataGridView4).EndInit();
             tabPage3.ResumeLayout(false);
             splitContainer3.Panel1.ResumeLayout(false);
             splitContainer3.Panel2.ResumeLayout(false);
@@ -2017,8 +1973,6 @@
         private DataGridView dataGridView6;
         private DataGridView dataGridView5;
         private Button button3;
-        private DateTimePicker dateTimePicker2;
-        private DateTimePicker dateTimePicker1;
         private ComboBox comboBox2;
         private TextBox textBox2;
         private Button button7;
@@ -2035,13 +1989,10 @@
         private TextBox textBox4;
         private PictureBox pictureBox1;
         private Panel panel5;
-        private Panel panel4;
-        private PictureBox pictureBox2;
         private Panel panel6;
         private Panel panel8;
         private Panel panel7;
         private Label label9;
-        private Label label8;
         private Label label7;
         private Label label6;
         private Label label5;
@@ -2156,5 +2107,6 @@
         private Label label3;
         private RichTextBox richTextBox7;
         private RichTextBox richTextBox8;
+        private ComboBox comboBox8;
     }
 }

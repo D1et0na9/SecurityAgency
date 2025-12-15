@@ -67,7 +67,7 @@ namespace SecurityAgencysApp
 
             // Подписываемся на DoubleClick для загрузки фото (активируется, когда panel2 и pictureBox1 включены)
             pictureBox1.DoubleClick += pictureBox1_DoubleClick;
-            pictureBox2.DoubleClick += pictureBox2_DoubleClick;
+            //pictureBox2.DoubleClick += pictureBox2_DoubleClick;
             // Подписка на переключение вкладок — при переходе будем обновлять гриды вкладки назначения
             if (tabControl1 != null)
                 tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
@@ -137,6 +137,22 @@ namespace SecurityAgencysApp
 
             if (checkedListBox2 != null)
                 checkedListBox2.ItemCheck += CheckedListBox2_ItemCheck;
+
+            if (comboBox8 != null)
+            {
+                var reports = new Dictionary<string, string>
+                {
+                    { "REPORT_ALL_GUARDCALLS", "Все охранные вызовы" },
+                    { "REPORT_ALL_REVENUE", "Доход по заказам" },
+                    { "REPORT_EMPLOYEE_CALLS", "Вызовы по сотрудникам" },
+                    { "REPORT_REVENUE_BY_PERIOD", "Доход за период" }
+                };
+
+                comboBox8.DataSource = new BindingSource(reports.ToList(), null);
+                comboBox8.DisplayMember = "Value";
+                comboBox8.ValueMember = "Key";
+                comboBox8.SelectedIndex = -1;
+            }
 
         }
 
@@ -2383,27 +2399,142 @@ namespace SecurityAgencysApp
             await LoadGuardedObjectsForComboBoxAsync();
             await LoadServiceTypesForComboBoxAsync();
 
-            // Разблокируем pictureBox2 и очищаем его
-            if (pictureBox2 != null)
-            {
-                pictureBox2.Enabled = true;
-                if (pictureBox2.Image != null)
-                {
-                    var old = pictureBox2.Image;
-                    pictureBox2.Image = null;
-                    old.Dispose();
-                }
-                pictureBox2.Cursor = Cursors.Hand;
-            }
+            //// Разблокируем pictureBox2 и очищаем его
+            //if (pictureBox2 != null)
+            //{
+            //    pictureBox2.Enabled = true;
+            //    if (pictureBox2.Image != null)
+            //    {
+            //        var old = pictureBox2.Image;
+            //        pictureBox2.Image = null;
+            //        old.Dispose();
+            //    }
+            //    pictureBox2.Cursor = Cursors.Hand;
+            //}
 
-            // Переместим фокус на первый элемент
-            if (panel11.Controls.Count > 0)
-                panel11.Controls[0].Focus();
+            //// Переместим фокус на первый элемент
+            //if (panel11.Controls.Count > 0)
+            //    panel11.Controls[0].Focus();
         }
 
         private void button15_Click(object sender, EventArgs e)
         {
+            try
+            {
+                // Проверяем, выбрана ли строка в dataGridView4
+                if (dataGridView4.CurrentRow == null)
+                {
+                    MessageBox.Show(this, "Выберите вызов в списке.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Разблокируем panel11
+                if (panel11 == null) return;
+                panel11.Enabled = true;
+
+                // Получаем ID вызова из скрытой колонки CALL_ID
+                var callIdStr = GetRowCellString(dataGridView4.CurrentRow, "CALL_ID");
+                if (!int.TryParse(callIdStr, out var callId) || callId <= 0)
+                {
+                    MessageBox.Show(this, "Не удалось определить ID выбранного вызова.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Сохраняем ID редактируемого вызова
+                _editingId = callId;
+
+                // Получаем данные из выбранной строки
+                var objectAddress = GetRowCellString(dataGridView4.CurrentRow, "OBJECT_ADDRESS");
+                var employeeFio = GetRowCellString(dataGridView4.CurrentRow, "EMPLOYEE_FIO");
+                var callDateTime = GetRowCellString(dataGridView4.CurrentRow, "CALL_DATETIME");
+                var result = GetRowCellString(dataGridView4.CurrentRow, "RESULT");
+                var serviceNames = GetRowCellString(dataGridView4.CurrentRow, "SERVICE_NAMES");
+
+                // Заполняем элементы panel11
+                var comboBox4 = FindControlRecursive(panel11, new[] { "comboBox4" }) as ComboBox;
+                var comboBox5 = FindControlRecursive(panel11, new[] { "comboBox5" }) as ComboBox;
+                var comboBox6 = FindControlRecursive(panel11, new[] { "comboBox6" }) as ComboBox;
+                var callDateTimeControl = FindControlRecursive(panel11, new[] { "dateTimePicker4" }) as DateTimePicker;
+                var resultControl = FindControlRecursive(panel11, new[] { "textBox17", "richTextBox7", "textBoxResult" });
+
+                // Устанавливаем охраняемый объект по адресу
+                if (comboBox4 != null && comboBox4.DataSource != null && !string.IsNullOrEmpty(objectAddress))
+                {
+                    try
+                    {
+                        var dataTable = comboBox4.DataSource as DataTable;
+                        if (dataTable != null)
+                        {
+                            var row = dataTable.AsEnumerable()
+                                .FirstOrDefault(r =>
+                                {
+                                    var display = r["DISPLAY"]?.ToString() ?? string.Empty;
+                                    return display.Equals(objectAddress, StringComparison.OrdinalIgnoreCase);
+                                });
+
+                            if (row != null && row.Table.Columns.Contains("ID"))
+                            {
+                                comboBox4.SelectedValue = row["ID"];
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        comboBox4.SelectedIndex = -1;
+                    }
+                }
+
+                // Устанавливаем сотрудника по ФИО
+                if (comboBox5 != null && comboBox5.DataSource != null && !string.IsNullOrEmpty(employeeFio))
+                {
+                    try
+                    {
+                        var dataTable = comboBox5.DataSource as DataTable;
+                        if (dataTable != null)
+                        {
+                            var row = dataTable.AsEnumerable()
+                                .FirstOrDefault(r =>
+                                {
+                                    var display = r["DISPLAY"]?.ToString() ?? string.Empty;
+                                    return display.Equals(employeeFio, StringComparison.OrdinalIgnoreCase);
+                                });
+
+                            if (row != null && row.Table.Columns.Contains("ID"))
+                            {
+                                comboBox5.SelectedValue = row["ID"];
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        comboBox5.SelectedIndex = -1;
+                    }
+                }
+
+                // Очищаем выбор услуги (так как редактируем вызов, а не заказ)
+                if (comboBox6 != null)
+                    comboBox6.SelectedIndex = -1;
+
+                // Устанавливаем дату/время вызова
+                if (callDateTimeControl != null && DateTime.TryParse(callDateTime, out var dt))
+                {
+                    callDateTimeControl.Value = dt;
+                }
+
+                // Устанавливаем результат
+                if (resultControl is TextBox tb)
+                    tb.Text = result;
+                else if (resultControl is RichTextBox rtb)
+                    rtb.Text = result;
+
+                // Переместим фокус на первый элемент
+                if (panel11.Controls.Count > 0)
+                    panel11.Controls[0].Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void button16_Click(object sender, EventArgs e)
@@ -3145,44 +3276,44 @@ namespace SecurityAgencysApp
             }
         }
 
-        private void pictureBox2_DoubleClick(object? sender, EventArgs? e)
-        {
-            // Разрешаем загрузку фото только если panel2 включена и pictureBox1 активен
-            if (panel11 == null || !panel11.Enabled) return;
-            if (pictureBox2 == null || !pictureBox2.Enabled) return;
+        //private void pictureBox2_DoubleClick(object? sender, EventArgs? e)
+        //{
+        //    // Разрешаем загрузку фото только если panel2 включена и pictureBox1 активен
+        //    if (panel11 == null || !panel11.Enabled) return;
+        //    if (pictureBox2 == null || !pictureBox2.Enabled) return;
 
-            using var ofd = new OpenFileDialog
-            {
-                Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp;*.gif)|*.jpg;*.jpeg;*.png;*.bmp;*.gif|All files (*.*)|*.*",
-                Title = "Выберите изображение"
-            };
+        //    using var ofd = new OpenFileDialog
+        //    {
+        //        Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp;*.gif)|*.jpg;*.jpeg;*.png;*.bmp;*.gif|All files (*.*)|*.*",
+        //        Title = "Выберите изображение"
+        //    };
 
-            if (ofd.ShowDialog(this) != DialogResult.OK) return;
+        //    if (ofd.ShowDialog(this) != DialogResult.OK) return;
 
-            try
-            {
-                var bytes = File.ReadAllBytes(ofd.FileName);
-                // Обновим текущую картинку в UI
-                if (pictureBox2.Image != null)
-                {
-                    var old = pictureBox2.Image;
-                    pictureBox2.Image = null;
-                    old.Dispose();
-                }
+        //try
+        //{
+        //    var bytes = File.ReadAllBytes(ofd.FileName);
+        //    // Обновим текущую картинку в UI
+        //    if (pictureBox2.Image != null)
+        //    {
+        //        var old = pictureBox2.Image;
+        //        pictureBox2.Image = null;
+        //        old.Dispose();
+        //    }
 
-                using var ms = new MemoryStream(bytes);
-                var img = Image.FromStream(ms);
-                pictureBox2.Image = new Bitmap(img);
-                pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+        //    using var ms = new MemoryStream(bytes);
+        //    var img = Image.FromStream(ms);
+        //    pictureBox2.Image = new Bitmap(img);
+        //    pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
 
-                // Сохраним байты для отправки в БД при сохранении
-                _currentPhoto = bytes;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Не удалось загрузить изображение: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+        //    // Сохраним байты для отправки в БД при сохранении
+        //    _currentPhoto = bytes;
+        //}
+        //catch (Exception ex)
+        //{
+        //    MessageBox.Show(this, $"Не удалось загрузить изображение: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //}
+        //}
 
         /// <summary>
         /// Обработчик кнопки Удалить (button37). Удаляет сотрудника и перезагружает список.
@@ -4507,7 +4638,120 @@ namespace SecurityAgencysApp
         {
             try
             {
-                // Проверяем, активна ли panel11
+                // Проверяем, редактируется ли вызов (был ли вызван button15)
+                if (_editingId > 0)
+                {
+                    // РЕЖИМ РЕДАКТИРОВАНИЯ охранного вызова
+                    if (panel11 == null || !panel11.Enabled)
+                    {
+                        MessageBox.Show(this, "Панель редактирования не активна.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    // Сбор данных из полей panel11
+                    var comboBox4 = FindControlRecursive(panel11, new[] { "comboBox4" }) as ComboBox;
+                    var comboBox5 = FindControlRecursive(panel11, new[] { "comboBox5" }) as ComboBox;
+                    var callDateTimeControl = FindControlRecursive(panel11, new[] { "dateTimePicker4" }) as DateTimePicker;
+                    var resultControl = FindControlRecursive(panel11, new[] { "textBox17", "richTextBox7", "textBoxResult" });
+
+                    // Получаем значения
+                    var objectIdStr = comboBox4?.SelectedValue?.ToString() ?? string.Empty;
+                    var employeeIdStr = comboBox5?.SelectedValue?.ToString() ?? string.Empty;
+                    var callDateTime = callDateTimeControl?.Value ?? DateTime.Now;
+
+                    var result = string.Empty;
+                    if (resultControl is TextBox tb)
+                        result = tb.Text.Trim();
+                    else if (resultControl is RichTextBox rtb)
+                        result = rtb.Text.Trim();
+
+                    // Валидация обязательных полей
+                    if (string.IsNullOrEmpty(objectIdStr) || objectIdStr == "0")
+                    {
+                        MessageBox.Show(this, "Выберите охраняемый объект.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (!int.TryParse(objectIdStr, out var objectId) || objectId <= 0)
+                    {
+                        MessageBox.Show(this, "Не удалось определить ID охраняемого объекта.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty(employeeIdStr) || employeeIdStr == "0")
+                    {
+                        MessageBox.Show(this, "Выберите сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    if (!int.TryParse(employeeIdStr, out var employeeId) || employeeId <= 0)
+                    {
+                        MessageBox.Show(this, "Не удалось определить ID сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Подтверждение сохранения
+                    var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr != DialogResult.Yes) return;
+
+                    // Вызов UPDATE_GUARDCALL
+                    try
+                    {
+                        await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                        await using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "UPDATE_GUARDCALL";
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("ID", _editingId);
+                        cmd.Parameters.AddWithValue("OBJECT_ID", objectId);
+                        cmd.Parameters.AddWithValue("EMPLOYEE_ID", employeeId);
+                        cmd.Parameters.AddWithValue("CALL_DATETIME", callDateTime);
+                        cmd.Parameters.AddWithValue("RESULT", string.IsNullOrEmpty(result) ? DBNull.Value : (object)result);
+
+                        await cmd.ExecuteNonQueryAsync();
+
+                        MessageBox.Show(this, "Охранный вызов успешно обновлён.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        // Очищаем все поля внутри panel11
+                        foreach (Control c in panel11.Controls)
+                        {
+                            switch (c)
+                            {
+                                case TextBox tb2:
+                                    tb2.Clear();
+                                    break;
+                                case RichTextBox rtb2:
+                                    rtb2.Clear();
+                                    break;
+                                case ComboBox cb:
+                                    cb.SelectedIndex = -1;
+                                    break;
+                                case DateTimePicker dtp:
+                                    dtp.Value = DateTime.Now;
+                                    break;
+                            }
+                        }
+
+                        // Блокируем panel11
+                        panel11.Enabled = false;
+                        _editingId = -1;
+
+                        // Обновляем гриды
+                        await LoadGuardCallsCombinedAsync();
+                    }
+                    catch (FbException fbEx)
+                    {
+                        MessageBox.Show(this, $"Ошибка БД при обновлении вызова: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, $"Ошибка при обновлении вызова: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    return;
+                }
+
+                // РЕЖИМ ДОБАВЛЕНИЯ НОВОГО ВЫЗОВА (существующая логика из button28_Click)
                 if (panel11 == null || !panel11.Enabled)
                 {
                     MessageBox.Show(this, "Сначала нажмите кнопку добавления записи.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -4515,65 +4759,60 @@ namespace SecurityAgencysApp
                 }
 
                 // Сбор данных из полей panel11
-                var comboBox4 = FindControlRecursive(panel11, new[] { "comboBox4" }) as ComboBox;
-                var comboBox5 = FindControlRecursive(panel11, new[] { "comboBox5" }) as ComboBox;
-                var comboBox6 = FindControlRecursive(panel11, new[] { "comboBox6" }) as ComboBox;
+                var comboBox4Add = FindControlRecursive(panel11, new[] { "comboBox4" }) as ComboBox;
+                var comboBox5Add = FindControlRecursive(panel11, new[] { "comboBox5" }) as ComboBox;
+                var comboBox6Add = FindControlRecursive(panel11, new[] { "comboBox6" }) as ComboBox;
                 var descriptionControl = FindControlRecursive(panel11, new[] { "richTextBox5" });
-                var callDateTimeControl = FindControlRecursive(panel11, new[] { "dateTimePicker4" });
-                var executionDateControl = FindControlRecursive(panel11, new[] { "dateTimePicker5" });
-                var resultControl = FindControlRecursive(panel11, new[] { "textBox17", "richTextBox7", "textBoxResult" });
+                var callDateTimeControl2 = FindControlRecursive(panel11, new[] { "dateTimePicker4" }) as DateTimePicker;
+                var executionDateControl = FindControlRecursive(panel11, new[] { "dateTimePicker5" }) as DateTimePicker;
+                var resultControl2 = FindControlRecursive(panel11, new[] { "textBox17", "richTextBox7", "textBoxResult" });
 
                 // Получаем значения из ComboBox (SelectedValue содержит ID)
-                var objectId = comboBox4?.SelectedValue?.ToString() ?? string.Empty;
-                var employeeIdStr = comboBox5?.SelectedValue?.ToString() ?? string.Empty;
-                var serviceIdStr = comboBox6?.SelectedValue?.ToString() ?? string.Empty;
+                var objectIdStr2 = comboBox4Add?.SelectedValue?.ToString() ?? string.Empty;
+                var employeeIdStr2 = comboBox5Add?.SelectedValue?.ToString() ?? string.Empty;
+                var serviceIdStr = comboBox6Add?.SelectedValue?.ToString() ?? string.Empty;
 
                 // Получаем значения из других контролов
-                var description = descriptionControl is RichTextBox rtb1 ? rtb1.Text.Trim() : string.Empty;
-                var callDateTime = callDateTimeControl is DateTimePicker dtp1 ? dtp1.Value : DateTime.Now;
-                var executionDate = executionDateControl is DateTimePicker dtp2 ? dtp2.Value : DateTime.Now;
+                var description = descriptionControl is RichTextBox rtb3 ? rtb3.Text.Trim() : string.Empty;
+                var callDateTime2 = callDateTimeControl2?.Value ?? DateTime.Now;
+                var executionDate = executionDateControl?.Value ?? DateTime.Now;
 
-                // Правильно получаем результат
-                var result = string.Empty;
-                if (resultControl is TextBox tb2)
-                {
-                    result = tb2.Text.Trim();
-                }
-                else if (resultControl is RichTextBox rtb2)
-                {
-                    result = rtb2.Text.Trim();
-                }
+                var result2 = string.Empty;
+                if (resultControl2 is TextBox tb3)
+                    result2 = tb3.Text.Trim();
+                else if (resultControl2 is RichTextBox rtb4)
+                    result2 = rtb4.Text.Trim();
 
                 // Валидация обязательных полей
-                if (string.IsNullOrEmpty(objectId) || objectId == "0")
+                if (string.IsNullOrEmpty(objectIdStr2) || objectIdStr2 == "0")
                 {
                     MessageBox.Show(this, "Выберите охраняемый объект.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                if (!int.TryParse(objectId, out var guardedObjectId) || guardedObjectId <= 0)
+                if (!int.TryParse(objectIdStr2, out var guardedObjectId) || guardedObjectId <= 0)
                 {
                     MessageBox.Show(this, "Не удалось определить ID охраняемого объекта.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                if (string.IsNullOrEmpty(employeeIdStr) || employeeIdStr == "0")
+                if (string.IsNullOrEmpty(employeeIdStr2) || employeeIdStr2 == "0")
                 {
                     MessageBox.Show(this, "Выберите сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                if (!int.TryParse(employeeIdStr, out var employeeId) || employeeId <= 0)
+                if (!int.TryParse(employeeIdStr2, out var employeeId2) || employeeId2 <= 0)
                 {
                     MessageBox.Show(this, "Не удалось определить ID сотрудника.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
                 // Подтверждение сохранения
-                var dr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (dr != DialogResult.Yes) return;
+                var confirmDr = MessageBox.Show(this, "Вы уверены что хотите сохранить запись?", "Подтвердите действие", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirmDr != DialogResult.Yes) return;
 
-                // Вызов хранимых процедур ADD_ORDER и ADD_GUARD_CALL
+                // Остальная существующая логика для добавления нового вызова...
                 try
                 {
                     await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
@@ -4604,18 +4843,18 @@ namespace SecurityAgencysApp
                         return;
                     }
 
-                    // Шаг 2: Создаём НОВЫЙ заказ через ADD_ORDER с данными из dateTimePicker4, dateTimePicker5 и pictureBox2
+                    // Шаг 2: Создаём НОВЫЙ заказ через ADD_ORDER
                     int newOrderId = -1;
-                    byte[]? contractScan = _currentPhoto; // Получаем скан контракта из pictureBox2
+                    byte[]? contractScan = _currentPhoto;
 
                     await using (var cmdAddOrder = conn.CreateCommand())
                     {
                         cmdAddOrder.CommandText = "ADD_ORDER";
                         cmdAddOrder.CommandType = CommandType.StoredProcedure;
                         cmdAddOrder.Parameters.AddWithValue("CLIENT_ID", clientId);
-                        cmdAddOrder.Parameters.AddWithValue("ORDER_DATE", callDateTime.Date); // из dateTimePicker4
-                        cmdAddOrder.Parameters.AddWithValue("EXECUTION_DATE", executionDate.Date); // из dateTimePicker5
-                        cmdAddOrder.Parameters.AddWithValue("CONTRACT_SCAN", contractScan != null ? (object)contractScan : DBNull.Value); // из pictureBox2
+                        cmdAddOrder.Parameters.AddWithValue("ORDER_DATE", callDateTime2.Date);
+                        cmdAddOrder.Parameters.AddWithValue("EXECUTION_DATE", executionDate.Date);
+                        cmdAddOrder.Parameters.AddWithValue("CONTRACT_SCAN", contractScan != null ? (object)contractScan : DBNull.Value);
 
                         await using var readerOrder = await cmdAddOrder.ExecuteReaderAsync();
                         if (await readerOrder.ReadAsync())
@@ -4638,9 +4877,9 @@ namespace SecurityAgencysApp
                         cmdAddCall.CommandText = "ADD_GUARD_CALL";
                         cmdAddCall.CommandType = CommandType.StoredProcedure;
                         cmdAddCall.Parameters.AddWithValue("OBJECT_ID", guardedObjectId);
-                        cmdAddCall.Parameters.AddWithValue("EMPLOYEE_ID", employeeId);
-                        cmdAddCall.Parameters.AddWithValue("CALL_DATETIME", callDateTime);
-                        cmdAddCall.Parameters.AddWithValue("RESULT", string.IsNullOrEmpty(result) ? DBNull.Value : (object)result);
+                        cmdAddCall.Parameters.AddWithValue("EMPLOYEE_ID", employeeId2);
+                        cmdAddCall.Parameters.AddWithValue("CALL_DATETIME", callDateTime2);
+                        cmdAddCall.Parameters.AddWithValue("RESULT", string.IsNullOrEmpty(result2) ? DBNull.Value : (object)result2);
 
                         await using var readerCall = await cmdAddCall.ExecuteReaderAsync();
                         if (await readerCall.ReadAsync())
@@ -4659,11 +4898,11 @@ namespace SecurityAgencysApp
                         {
                             switch (c)
                             {
-                                case TextBox tb:
-                                    tb.Clear();
+                                case TextBox tb4:
+                                    tb4.Clear();
                                     break;
-                                case RichTextBox rtb:
-                                    rtb.Clear();
+                                case RichTextBox rtb5:
+                                    rtb5.Clear();
                                     break;
                                 case ComboBox cb:
                                     cb.SelectedIndex = -1;
@@ -4677,26 +4916,10 @@ namespace SecurityAgencysApp
                             }
                         }
 
-                        // Очищаем и блокируем pictureBox2
-                        if (pictureBox2 != null)
-                        {
-                            if (pictureBox2.Image != null)
-                            {
-                                var old = pictureBox2.Image;
-                                pictureBox2.Image = null;
-                                old.Dispose();
-                            }
-                            pictureBox2.Enabled = false;
-                            pictureBox2.Cursor = Cursors.Default;
-                        }
-
-                        // Сбрасываем текущее фото
-                        _currentPhoto = null;
-
                         // Блокируем panel11
                         panel11.Enabled = false;
 
-                        // Обновляем гриды вызовов и объектов
+                        // Обновляем гриды
                         await LoadGuardCallsCombinedAsync();
                         await LoadGuardedObjectsCombinedAsync();
                     }
@@ -4724,6 +4947,182 @@ namespace SecurityAgencysApp
         private void label32_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private DateTime? PromptForDate(string prompt)
+        {
+            using (var form = new Form())
+            {
+                form.Text = "Выбор даты";
+                form.Width = 300;
+                form.Height = 150;
+                form.StartPosition = FormStartPosition.CenterParent;
+
+                var label = new Label { Left = 20, Top = 20, Text = prompt, Width = 250 };
+                var dateTimePicker = new DateTimePicker { Left = 20, Top = 50, Width = 250, Value = DateTime.Today };
+                var okButton = new Button { Text = "OK", Left = 120, Width = 80, Top = 80, DialogResult = DialogResult.OK };
+                var cancelButton = new Button { Text = "Отмена", Left = 200, Width = 80, Top = 80, DialogResult = DialogResult.Cancel };
+
+                form.Controls.Add(label);
+                form.Controls.Add(dateTimePicker);
+                form.Controls.Add(okButton);
+                form.Controls.Add(cancelButton);
+                form.AcceptButton = okButton;
+                form.CancelButton = cancelButton;
+
+                return form.ShowDialog(this) == DialogResult.OK ? dateTimePicker.Value.Date : null;
+            }
+        }
+
+        private async Task ExportReportToCsvAsync(string procedureName, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                var table = new DataTable();
+
+                await using var conn = await FirebirdConnection.CreateOpenConnectionAsync();
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = procedureName;
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Добавляем параметры для процедуры REPORT_REVENUE_BY_PERIOD
+                if (procedureName == "REPORT_REVENUE_BY_PERIOD" && startDate.HasValue && endDate.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("START_DATE", startDate.Value);
+                    cmd.Parameters.AddWithValue("END_DATE", endDate.Value);
+                }
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                table.Load(reader);
+
+                if (table.Rows.Count == 0)
+                {
+                    MessageBox.Show(this, "Нет данных для экспорта.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Диалог выбора папки для сохранения
+                using var sfd = new SaveFileDialog
+                {
+                    FileName = GetReportFileName(procedureName),
+                    Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*",
+                    Title = "Сохранить отчёт",
+                    DefaultExt = "csv"
+                };
+
+                if (sfd.ShowDialog(this) != DialogResult.OK) return;
+
+                // Экспорт в CSV без ID колонок
+                using (var writer = new StreamWriter(sfd.FileName, false, System.Text.Encoding.UTF8))
+                {
+                    // Заголовки (исключаем ID)
+                    var headers = new List<string>();
+                    var idColumnIndices = new HashSet<int>();
+
+                    for (int i = 0; i < table.Columns.Count; i++)
+                    {
+                        var colName = table.Columns[i].ColumnName;
+                        if (colName.Contains("ID", StringComparison.OrdinalIgnoreCase))
+                        {
+                            idColumnIndices.Add(i);
+                        }
+                        else
+                        {
+                            headers.Add($"\"{GetColumnHeader(colName)}\"");
+                        }
+                    }
+
+                    writer.WriteLine(string.Join(",", headers));
+
+                    // Данные
+                    foreach (DataRow row in table.Rows)
+                    {
+                        var values = new List<string>();
+                        for (int i = 0; i < table.Columns.Count; i++)
+                        {
+                            if (idColumnIndices.Contains(i)) continue;
+
+                            var cellValue = row[i]?.ToString() ?? string.Empty;
+                            cellValue = $"\"{cellValue.Replace("\"", "\"\"")}\"";
+                            values.Add(cellValue);
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+
+                MessageBox.Show(this, $"Отчёт успешно сохранён:\n{sfd.FileName}", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (FbException fbEx)
+            {
+                MessageBox.Show(this, $"Ошибка БД: {fbEx.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка при экспорте: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string GetReportFileName(string procedureName)
+        {
+            return procedureName switch
+            {
+                "REPORT_ALL_GUARDCALLS" => "guard_calls.csv",
+                "REPORT_ALL_REVENUE" => "revenue_report.csv",
+                "REPORT_EMPLOYEE_CALLS" => "employee_calls.csv",
+                "REPORT_REVENUE_BY_PERIOD" => "revenue_by_period.csv",
+                _ => "report.csv"
+            };
+        }
+
+        private string GetColumnHeader(string columnName)
+        {
+            return columnName switch
+            {
+                "OBJECT_ADDRESS" => "Адрес объекта",
+                "EMPLOYEE_FIO" => "Сотрудник",
+                "CALL_DATETIME" => "Дата/время вызова",
+                "RESULT" => "Результат",
+                "CLIENT_FIO" => "Клиент",
+                "ORDER_DATE" => "Дата заказа",
+                "EXECUTION_DATE" => "Дата исполнения",
+                "TOTAL_REVENUE" => "Итоговая сумма",
+                "FULL_NAME" => "ФИО",
+                "CALL_COUNT" => "Количество вызовов",
+                "ORDER_COUNT" => "Количество заказов",
+                _ => columnName.Replace('_', ' ')
+            };
+        }
+
+        private async void button44_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (comboBox8?.SelectedValue is not string procedureName || string.IsNullOrEmpty(procedureName))
+                {
+                    MessageBox.Show(this, "Выберите отчёт.", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Для процедуры с параметрами запрашиваем даты
+                if (procedureName == "REPORT_REVENUE_BY_PERIOD")
+                {
+                    var startDate = PromptForDate("Введите начальную дату:");
+                    var endDate = PromptForDate("Введите конечную дату:");
+
+                    if (startDate == null || endDate == null)
+                        return;
+
+                    await ExportReportToCsvAsync(procedureName, startDate.Value, endDate.Value);
+                }
+                else
+                {
+                    await ExportReportToCsvAsync(procedureName);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }
