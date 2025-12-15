@@ -430,7 +430,7 @@ namespace SecurityAgencysApp
                     {
                         comboBox6.DisplayMember = "SERVICENAME";
                         comboBox6.ValueMember = "ID";
-                        comboBox6.DataSource = table;
+                        comboBox6.DataSource = table.Copy();
                         comboBox6.SelectedIndex = -1;
                     }
                 }
